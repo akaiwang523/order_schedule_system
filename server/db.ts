@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and, gte, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, customers, orders, schedules, InsertCustomer, InsertOrder, InsertSchedule } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,92 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Customer queries
+export async function getCustomerByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(customers).where(eq(customers.userId, userId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function upsertCustomer(userId: number, data: Omit<InsertCustomer, 'userId'>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getCustomerByUserId(userId);
+  if (existing) {
+    await db.update(customers).set(data).where(eq(customers.userId, userId));
+  } else {
+    await db.insert(customers).values({ ...data, userId });
+  }
+}
+
+// Order queries
+export async function createOrder(data: InsertOrder): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(orders).values(data);
+  return (result as any).insertId || 0;
+}
+
+export async function getOrdersByCustomerId(customerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(orders).where(eq(orders.customerId, customerId));
+}
+
+export async function getAllOrders() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(orders);
+}
+
+export async function getOrderById(orderId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// Schedule queries
+export async function createSchedule(data: InsertSchedule) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(schedules).values(data);
+  return result;
+}
+
+export async function getSchedulesByDate(date: Date) {
+  const db = await getDb();
+  if (!db) return [];
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  return await db.select().from(schedules).where(
+    and(
+      gte(schedules.scheduledDate, startOfDay),
+      lt(schedules.scheduledDate, endOfDay)
+    )
+  );
+}
+
+export async function updateScheduleDeliveryTime(scheduleId: number, deliveryTime: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(schedules).set({ deliveryTime }).where(eq(schedules.id, scheduleId));
+}
+
+export async function markScheduleAsCompleted(scheduleId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(schedules).set({ isCompleted: true }).where(eq(schedules.id, scheduleId));
+}
+
+export async function getScheduleByOrderId(orderId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(schedules).where(eq(schedules.orderId, orderId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}

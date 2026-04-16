@@ -5,31 +5,45 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Profile from "./pages/Profile";
+import PlaceOrder from "./pages/PlaceOrder";
+import MyOrders from "./pages/MyOrders";
+import AdminDashboard from "./pages/AdminDashboard";
+import StaffSchedule from "./pages/StaffSchedule";
+import AuthPage from "./pages/AuthPage";
+import { useAuth } from "./_core/hooks/useAuth";
+import { useLocation } from "wouter";
+import { useEffect } from "react";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
+  const { user, loading } = useAuth();
+  const [location, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!loading && !user && ["/profile", "/place-order", "/orders", "/admin/dashboard", "/staff/schedule"].includes(location)) {
+      setLocation("/auth");
+    }
+  }, [user, loading, location, setLocation]);
+
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
+      <Route path="/" component={Home} />
+      <Route path="/auth" component={AuthPage} />
+      <Route path="/profile" component={Profile} />
+      <Route path="/place-order" component={PlaceOrder} />
+      <Route path="/orders" component={MyOrders} />
+      <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/staff/schedule" component={StaffSchedule} />
+      <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
           <Router />
