@@ -126,7 +126,27 @@ export async function getOrdersByCustomerId(customerId: number) {
 export async function getAllOrders() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(orders);
+  // 使用 leftJoin 來獲取客戶信息
+  return await db
+    .select({
+      id: orders.id,
+      customerId: orders.customerId,
+      deliveryType: orders.deliveryType,
+      bagCount: orders.bagCount,
+      paymentMethod: orders.paymentMethod,
+      paymentStatus: orders.paymentStatus,
+      notes: orders.notes,
+      orderStatus: orders.orderStatus,
+      status: orders.status,
+      completedAt: orders.completedAt,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      customerName: customers.fullName,
+      customerPhone: customers.phone,
+      customerAddress: customers.address,
+    })
+    .from(orders)
+    .leftJoin(customers, eq(orders.customerId, customers.id));
 }
 
 export async function getOrderById(orderId: number) {
@@ -152,12 +172,30 @@ export async function getSchedulesByDate(date: Date) {
   const endOfDay = new Date(date);
   endOfDay.setHours(23, 59, 59, 999);
   
-  return await db.select().from(schedules).where(
-    and(
-      gte(schedules.scheduledDate, startOfDay),
-      lt(schedules.scheduledDate, endOfDay)
-    )
-  );
+  return await db
+    .select({
+      id: schedules.id,
+      orderId: schedules.orderId,
+      scheduledDate: schedules.scheduledDate,
+      deliveryTime: schedules.deliveryTime,
+      isCompleted: schedules.isCompleted,
+      createdAt: schedules.createdAt,
+      updatedAt: schedules.updatedAt,
+      customerName: customers.fullName,
+      customerPhone: customers.phone,
+      customerAddress: customers.address,
+      deliveryType: orders.deliveryType,
+      bagCount: orders.bagCount,
+    })
+    .from(schedules)
+    .leftJoin(orders, eq(schedules.orderId, orders.id))
+    .leftJoin(customers, eq(orders.customerId, customers.id))
+    .where(
+      and(
+        gte(schedules.scheduledDate, startOfDay),
+        lt(schedules.scheduledDate, endOfDay)
+      )
+    );
 }
 
 export async function updateScheduleDeliveryTime(scheduleId: number, deliveryTime: string) {
@@ -169,7 +207,14 @@ export async function updateScheduleDeliveryTime(scheduleId: number, deliveryTim
 export async function markScheduleAsCompleted(scheduleId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(schedules).set({ isCompleted: true }).where(eq(schedules.id, scheduleId));
+  await db.update(schedules).set({ isCompleted: true, completedAt: new Date() }).where(eq(schedules.id, scheduleId));
+}
+
+export async function completeOrder(orderId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const now = new Date();
+  await db.update(orders).set({ status: 'completed', completedAt: now }).where(eq(orders.id, orderId));
 }
 
 export async function getScheduleByOrderId(orderId: number) {
@@ -177,4 +222,10 @@ export async function getScheduleByOrderId(orderId: number) {
   if (!db) return undefined;
   const result = await db.select().from(schedules).where(eq(schedules.orderId, orderId)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateScheduleDate(orderId: number, newDate: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(schedules).set({ scheduledDate: newDate }).where(eq(schedules.orderId, orderId));
 }

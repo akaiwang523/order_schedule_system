@@ -4,6 +4,9 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import AuthPage from "@/pages/AuthPage";
 import AdminDashboard from "@/pages/AdminDashboard";
+import AdminOrders from "@/pages/AdminOrders";
+import AdminCustomers from "@/pages/AdminCustomers";
+import AdminAnalytics from "@/pages/AdminAnalytics";
 import CustomerOrders from "@/pages/CustomerOrders";
 
 export default function App() {
@@ -54,6 +57,24 @@ export default function App() {
         </ProtectedRoute>
       )}
       
+      {location === "/admin/orders" && (
+        <ProtectedRoute requiredRole="ADMIN">
+          <AdminOrders />
+        </ProtectedRoute>
+      )}
+      
+      {location === "/admin/customers" && (
+        <ProtectedRoute requiredRole="ADMIN">
+          <AdminCustomers />
+        </ProtectedRoute>
+      )}
+      
+      {location === "/admin/analytics" && (
+        <ProtectedRoute requiredRole="ADMIN">
+          <AdminAnalytics />
+        </ProtectedRoute>
+      )}
+      
       {location === "/orders" && (
         <ProtectedRoute requiredRole="CUSTOMER">
           <CustomerOrders />
@@ -63,6 +84,9 @@ export default function App() {
       {/* 未定義的路由 → 根據身份導向 */}
       {location !== "/login" && 
        location !== "/admin/dashboard" && 
+       location !== "/admin/orders" &&
+       location !== "/admin/customers" &&
+       location !== "/admin/analytics" &&
        location !== "/orders" && 
        user && (
         <>

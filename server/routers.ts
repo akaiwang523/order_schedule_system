@@ -14,7 +14,9 @@ import {
   getSchedulesByDate,
   updateScheduleDeliveryTime,
   markScheduleAsCompleted,
+  completeOrder,
   getScheduleByOrderId,
+  updateScheduleDate,
   getDb,
 } from "./db";
 import { TRPCError } from "@trpc/server";
@@ -261,6 +263,34 @@ export const appRouter = router({
       .input(z.object({ orderId: z.number() }))
       .query(async ({ input }) => {
         return await getScheduleByOrderId(input.orderId);
+      }),
+
+    completeOrder: protectedProcedure
+      .input(z.object({ orderId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Only admins can complete orders",
+          });
+        }
+        await completeOrder(input.orderId);
+        return { success: true };
+      }),
+
+    updateScheduleDate: protectedProcedure
+      .input(z.object({ orderId: z.number(), newDate: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Only admins can update schedule dates",
+          });
+        }
+        const newDate = new Date(input.newDate);
+        newDate.setHours(0, 0, 0, 0);
+        await updateScheduleDate(input.orderId, newDate);
+        return { success: true };
       }),
   }),
 });

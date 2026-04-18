@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 interface LayoutProps {
@@ -8,6 +9,7 @@ interface LayoutProps {
 
 export function Layout({ children, pageTitle }: LayoutProps) {
   const { user, logout } = useAuth();
+  const [, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const isAdmin = user?.role === "admin" || user?.role === "ADMIN";
 
@@ -54,14 +56,14 @@ export function Layout({ children, pageTitle }: LayoutProps) {
         {/* 選單項目 */}
         <nav className="flex-1 p-4 space-y-2">
           {menuItems.map((item) => (
-            <a
+            <button
               key={item.href}
-              href={item.href}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition text-sm font-medium"
+              onClick={() => setLocation(item.href)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition text-sm font-medium text-left"
             >
               <span className="text-lg">{item.icon}</span>
               {sidebarOpen && <span>{item.label}</span>}
-            </a>
+            </button>
           ))}
         </nav>
 

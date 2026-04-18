@@ -4,7 +4,9 @@ import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
+import { eq } from "drizzle-orm";
 import type { User } from "../../drizzle/schema";
+import { users } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
 import type {
@@ -257,7 +259,29 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<User> {
-    // Regular authentication flow
+    // Check for local authentication token in Authorization header (for development/testing)
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7);
+      if (token.startsWith("token_")) {
+        const userId = parseInt(token.substring(6));
+        try {
+          const drizzleDb = await db.getDb();
+          if (drizzleDb) {
+            const result = await drizzleDb.select().from(users).where(
+              eq(users.id, userId)
+            ).limit(1);
+            if (result && result.length > 0) {
+              return result[0];
+            }
+          }
+        } catch (error) {
+          console.warn("[Auth] Failed to fetch user by token:", error);
+        }
+      }
+    }
+
+    // Regular OAuth authentication flow
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
     const session = await this.verifySession(sessionCookie);

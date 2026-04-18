@@ -1,95 +1,284 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Layout } from "@/components/Layout";
+import { trpc } from "@/lib/trpc";
+import AdminLayout from "@/components/AdminLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
-  const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState("schedule");
+  const { user } = useAuth();
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [isLoadingSchedules, setIsLoadingSchedules] = useState(true);
+  const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>("");
 
-  const handleLogout = () => {
-    logout();
-    setLocation("/login");
+  // 獲取所有訂單
+  const { data: allOrders, isLoading: ordersLoading } = trpc.order.getAll.useQuery();
+  
+  // 獲取當日排程
+  const { data: todaySchedules, isLoading: schedulesLoading } = trpc.schedule.getTodaySchedules.useQuery();
+
+  // 完成訂單的 mutation
+  const completeOrderMutation = trpc.schedule.completeOrder.useMutation({
+    onSuccess: (_, variables) => {
+      // 從待處理訂單中移除
+      setPendingOrders(pendingOrders.filter(order => order.id !== variables.orderId));
+      // 從排程中移除
+      setSchedules(schedules.filter(schedule => schedule.orderId !== variables.orderId));
+    },
+  });
+
+  // 初始化待處理訂單
+  useEffect(() => {
+    if (allOrders) {
+      const pending = allOrders.filter((order: any) => order.status !== 'completed');
+      setPendingOrders(pending);
+      setIsLoadingOrders(false);
+    }
+  }, [allOrders]);
+
+  // 初始化當日排程
+  useEffect(() => {
+    if (todaySchedules) {
+      const notCompleted = todaySchedules.filter((schedule: any) => !schedule.isCompleted);
+      setSchedules(notCompleted);
+      setIsLoadingSchedules(false);
+    }
+  }, [todaySchedules]);
+
+  // 更新排程日期的 mutation
+  const updateScheduleDateMutation = trpc.schedule.updateScheduleDate.useMutation({
+    onSuccess: () => {
+      // 關閉對話框
+      setEditingOrderId(null);
+      setSelectedDate("");
+    },
+  });
+
+  const handleCompleteOrder = (orderId: number) => {
+    completeOrderMutation.mutate({ orderId });
+  };
+
+  const handleEditDate = (orderId: number) => {
+    setEditingOrderId(orderId);
+    setSelectedDate(new Date().toISOString().split('T')[0]);
+  };
+
+  const handleSaveDate = async () => {
+    if (editingOrderId && selectedDate) {
+      try {
+        await updateScheduleDateMutation.mutateAsync({
+          orderId: editingOrderId,
+          newDate: selectedDate,
+        });
+      } catch (error) {
+        console.error("更新排程失敗:", error);
+      }
+    }
+  };
+
+  const getCategoryLabel = (deliveryType: string) => {
+    const labels: Record<string, string> = {
+      pickup: "到府收送 - 收件",
+      delivery: "到府收送 - 送回",
+      self: "自行送件",
+    };
+    return labels[deliveryType] || deliveryType;
   };
 
   return (
-    <Layout pageTitle="管理後台">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm text-gray-600 mb-2">今日訂單</div>
-          <div className="text-3xl font-bold text-slate-900">12</div>
-          <div className="text-xs text-gray-500 mt-2">比昨日增加 20%</div>
+    <AdminLayout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-4xl font-bold text-white mb-2">管理後台</h1>
+          <p className="text-gray-400">
+            {new Date().toLocaleDateString("zh-TW", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm text-gray-600 mb-2">待處理預約</div>
-          <div className="text-3xl font-bold text-slate-900">5</div>
-          <div className="text-xs text-gray-500 mt-2">需要安排時間</div>
-        </div>
+        {/* 待處理訂單 */}
+        <Card className="bg-gray-900 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">待處理訂單</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingOrders ? (
+              <div className="text-gray-400">載入中...</div>
+            ) : pendingOrders.length === 0 ? (
+              <div className="text-gray-400">沒有待處理訂單</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-gray-300">
+                  <thead className="border-b border-gray-700">
+                    <tr>
+                      <th className="text-left py-2 px-4">客戶姓名</th>
+                      <th className="text-left py-2 px-4">訂單內容</th>
+                      <th className="text-left py-2 px-4">聯絡電話</th>
+                      <th className="text-left py-2 px-4">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingOrders.map((order: any) => (
+                      <tr key={order.id} className="border-b border-gray-700 hover:bg-gray-800">
+                        <td className="py-2 px-4">{order.customerName || "未知客戶"}</td>
+                        <td className="py-2 px-4">
+                          {getCategoryLabel(order.deliveryType)} {order.bagCount} 袋
+                        </td>
+                        <td className="py-2 px-4">{order.customerPhone || "未提供"}</td>
+                        <td className="py-2 px-4 space-x-2">
+                          <Button
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => handleEditDate(order.id)}
+                          >
+                            編輯
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => handleCompleteOrder(order.id)}
+                            disabled={completeOrderMutation.isPending}
+                          >
+                            {completeOrderMutation.isPending ? "處理中..." : "完成"}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm text-gray-600 mb-2">本月總額</div>
-          <div className="text-3xl font-bold text-slate-900">NT$45,000</div>
-          <div className="text-xs text-gray-500 mt-2">已收款 85%</div>
-        </div>
+        {/* 當日排程 */}
+        <Card className="bg-gray-900 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">當日排程</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingSchedules ? (
+              <div className="text-gray-400">載入中...</div>
+            ) : schedules.length === 0 ? (
+              <div className="text-gray-400">沒有當日排程</div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 到府收送 */}
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">到府收送</h3>
+                  <div className="space-y-3">
+                    {schedules
+                      .filter((s: any) => s.deliveryType !== 'self')
+                      .map((schedule: any) => (
+                        <div
+                          key={schedule.id}
+                          className="bg-gray-800 p-4 rounded border border-gray-700"
+                        >
+                          <p className="text-white font-semibold">
+                            {schedule.customerName || "未知客戶"}
+                          </p>
+                          <p className="text-gray-400 text-sm">
+                            {schedule.customerPhone || "未提供"}
+                          </p>
+                          <p className="text-gray-400 text-sm">
+                            {schedule.bagCount} 袋
+                          </p>
+                          <Button
+                            size="sm"
+                            className="mt-2 bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => handleCompleteOrder(schedule.orderId)}
+                          >
+                            完成
+                          </Button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm text-gray-600 mb-2">活躍客戶</div>
-          <div className="text-3xl font-bold text-slate-900">28</div>
-          <div className="text-xs text-gray-500 mt-2">本月新增 3 位</div>
-        </div>
+                {/* 自行送件 */}
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">自行送件</h3>
+                  <div className="space-y-3">
+                    {schedules
+                      .filter((s: any) => s.deliveryType === 'self')
+                      .map((schedule: any) => (
+                        <div
+                          key={schedule.id}
+                          className="bg-gray-800 p-4 rounded border border-gray-700"
+                        >
+                          <p className="text-white font-semibold">
+                            {schedule.customerName || "未知客戶"}
+                          </p>
+                          <p className="text-gray-400 text-sm">
+                            {schedule.customerPhone || "未提供"}
+                          </p>
+                          <p className="text-gray-400 text-sm">
+                            {schedule.bagCount} 袋
+                          </p>
+                          <Button
+                            size="sm"
+                            className="mt-2 bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => handleCompleteOrder(schedule.orderId)}
+                          >
+                            完成
+                          </Button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-slate-900">當日排程</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">客戶名稱</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">地址</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">電話</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">袋數</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">狀態</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm text-gray-900">王小明</td>
-                <td className="px-6 py-4 text-sm text-gray-600">台北市信義區</td>
-                <td className="px-6 py-4 text-sm text-gray-600">0912-345-678</td>
-                <td className="px-6 py-4 text-sm text-gray-600">3</td>
-                <td className="px-6 py-4">
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
-                    待取件
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <button className="text-blue-600 hover:text-blue-800 font-medium">編輯</button>
-                </td>
-              </tr>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm text-gray-900">李小華</td>
-                <td className="px-6 py-4 text-sm text-gray-600">台北市中山區</td>
-                <td className="px-6 py-4 text-sm text-gray-600">0912-345-679</td>
-                <td className="px-6 py-4 text-sm text-gray-600">2</td>
-                <td className="px-6 py-4">
-                  <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                    已完成
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <button className="text-blue-600 hover:text-blue-800 font-medium">編輯</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </Layout>
+      {/* 日期編輯對話框 */}
+      <Dialog open={editingOrderId !== null} onOpenChange={(open) => !open && setEditingOrderId(null)}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">選擇排程日期</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-gray-800 border-gray-700 text-white"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingOrderId(null)}
+              className="text-gray-300"
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleSaveDate}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              確認
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </AdminLayout>
   );
 }

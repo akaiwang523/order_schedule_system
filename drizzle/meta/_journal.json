@@ -22,6 +22,20 @@
       "when": 1776492139408,
       "tag": "0002_ambitious_donald_blake",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1776497418349,
+      "tag": "0003_jittery_random",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1776498267365,
+      "tag": "0004_yummy_shard",
+      "breakpoints": true
     }
   ]
 }
