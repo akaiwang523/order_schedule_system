@@ -1,59 +1,63 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+
+const showAlert = (title: string, description: string, isError: boolean = false) => {
+  if (isError) {
+    alert(`❌ ${title}\n${description}`);
+  } else {
+    alert(`✅ ${title}\n${description}`);
+  }
+};
 
 export default function AuthPage() {
-  const [, setLocation] = useLocation();
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [, setLocation] = useLocation();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      toast.error("請輸入帳號和密碼");
+      showAlert("錯誤", "請輸入帳號和密碼", true);
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await fetch("/api/trpc/auth.login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          input: { email, password }
-        })
+        body: JSON.stringify({ email, password })
       });
 
       const data = await response.json();
       
-      if (data.result?.data) {
-        const user = data.result.data;
-        localStorage.setItem("user", JSON.stringify(user));
-        localStorage.setItem("token", user.token || "");
-        
-        toast.success("登入成功！");
+      if (response.ok && data.id) {
+        login(data);
+        showAlert("成功", "登入成功！");
         
         // 根據身份分流
-        if (user.role === "admin") {
+        if (data.role === "ADMIN") {
           setLocation("/admin/dashboard");
-        } else if (user.role === "staff") {
+        } else if (data.role === "STAFF") {
           setLocation("/staff/schedule");
         } else {
-          setLocation("/place-order");
+          setLocation("/orders");
         }
       } else {
-        toast.error(data.result?.error?.message || "登入失敗");
+        showAlert("錯誤", data.error || "登入失敗", true);
       }
     } catch (error) {
-      toast.error("登入失敗，請稍後重試");
+      showAlert("錯誤", "登入失敗，請稍後重試", true);
     } finally {
       setIsLoading(false);
     }
@@ -62,39 +66,44 @@ export default function AuthPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim() || !confirmPassword.trim() || !fullName.trim()) {
-      toast.error("請填寫所有欄位");
+      showAlert("錯誤", "請填寫所有欄位", true);
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("密碼不相符");
+      showAlert("錯誤", "密碼不相符", true);
+      return;
+    }
+
+    if (password.length < 6) {
+      showAlert("錯誤", "密碼至少需要6個字符", true);
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await fetch("/api/trpc/auth.register", {
+      const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          input: { email, password, fullName }
+          email, password, fullName
         })
       });
 
       const data = await response.json();
       
-      if (data.result?.data) {
-        toast.success("註冊成功！請登入");
+      if (response.ok && data.success) {
+        showAlert("成功", "註冊成功！請登入");
         setMode("login");
         setEmail("");
         setPassword("");
         setConfirmPassword("");
         setFullName("");
       } else {
-        toast.error(data.result?.error?.message || "註冊失敗");
+        showAlert("錯誤", data.error || "註冊失敗", true);
       }
     } catch (error) {
-      toast.error("註冊失敗，請稍後重試");
+      showAlert("錯誤", "註冊失敗，請稍後重試", true);
     } finally {
       setIsLoading(false);
     }
@@ -109,6 +118,7 @@ export default function AuthPage() {
           <p className="text-gray-400 text-sm">洗衣物流管理系統</p>
         </div>
 
+        {/* Card */}
         <Card className="bg-gray-900 border-gray-800">
           {mode === "login" && (
             <>
@@ -252,15 +262,14 @@ export default function AuthPage() {
                     disabled={isLoading}
                     className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 font-bold py-6 text-lg"
                   >
-                    {isLoading ? "註冊中..." : "建立帳號"}
+                    {isLoading ? "註冊中..." : "註冊"}
                   </Button>
                 </form>
 
                 <div className="text-center text-sm text-gray-400 mt-6">
-                  已有帳號？
                   <button
                     onClick={() => setMode("login")}
-                    className="hover:text-gray-300 underline ml-1"
+                    className="hover:text-gray-300 underline"
                   >
                     返回登入
                   </button>
@@ -274,7 +283,7 @@ export default function AuthPage() {
               <CardHeader className="space-y-2">
                 <CardTitle className="text-2xl font-black text-gray-100">忘記密碼</CardTitle>
                 <CardDescription className="text-gray-400">
-                  輸入您的帳號重設密碼
+                  請輸入您的 Email
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -286,7 +295,7 @@ export default function AuthPage() {
                     <Input
                       id="forgotEmail"
                       type="email"
-                      placeholder="請輸入您的 Email"
+                      placeholder="請輸入 Email"
                       className="bg-gray-800 border-gray-700 text-gray-100 placeholder-gray-500"
                     />
                   </div>
@@ -294,12 +303,8 @@ export default function AuthPage() {
                   <Button
                     disabled={isLoading}
                     className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 font-bold py-6 text-lg"
-                    onClick={() => {
-                      toast.info("密碼重設連結已發送至您的 Email");
-                      setMode("login");
-                    }}
                   >
-                    發送重設連結
+                    {isLoading ? "發送中..." : "發送重設連結"}
                   </Button>
                 </div>
 

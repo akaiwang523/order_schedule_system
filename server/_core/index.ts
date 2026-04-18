@@ -35,6 +35,139 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  
+  // 原生登入和註冊 API 端點
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(400).json({ error: "缺少帳號或密碼" });
+      }
+      
+      const crypto = await import('crypto');
+      const hashedPassword = crypto.default.createHash('sha256').update(password).digest('hex');
+      
+      const { getDb } = await import('../db');
+      const { users } = await import('../../drizzle/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const db = await getDb();
+      if (!db) {
+        return res.status(500).json({ error: "資料庫連接失敗" });
+      }
+      
+      const result = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+      
+      if (result.length === 0 || result[0].password !== hashedPassword) {
+        return res.status(401).json({ error: "帳號或密碼錯誤" });
+      }
+      
+      res.json({
+        id: result[0].id,
+        email: result[0].email,
+        name: result[0].name,
+        role: result[0].role,
+        token: 'token_' + result[0].id,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "登入失敗" });
+    }
+  });
+
+  // 添加 getMe API 端點
+  app.get("/api/auth/me", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ error: "未授權" });
+      }
+      
+      // 從 token 提取用戶 ID (token 格式: token_<userId>)
+      const userId = parseInt(token.replace('token_', ''));
+      
+      const { getDb } = await import('../db');
+      const { users } = await import('../../drizzle/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const db = await getDb();
+      if (!db) {
+        return res.status(500).json({ error: "資料庫連接失敗" });
+      }
+      
+      const result = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      
+      if (result.length === 0) {
+        return res.status(401).json({ error: "用戶不存在" });
+      }
+      
+      res.json({
+        id: result[0].id,
+        email: result[0].email,
+        name: result[0].name,
+        role: result[0].role,
+        token: 'token_' + result[0].id,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "獲取用戶信息失敗" });
+    }
+  });
+  
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { email, password, fullName } = req.body;
+      if (!email || !password || !fullName) {
+        return res.status(400).json({ error: "缺少必要欄位" });
+      }
+      
+      if (password.length < 6) {
+        return res.status(400).json({ error: "密碼至少需要6個字符" });
+      }
+      
+      const crypto = await import('crypto');
+      const hashedPassword = crypto.default.createHash('sha256').update(password).digest('hex');
+      
+      const { getDb } = await import('../db');
+      const { users } = await import('../../drizzle/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const db = await getDb();
+      if (!db) {
+        return res.status(500).json({ error: "資料庫連接失敗" });
+      }
+      
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+      
+      if (existingUser.length > 0) {
+        return res.status(400).json({ error: "該 Email 已被註冊" });
+      }
+      
+      await db.insert(users).values({
+        email,
+        password: hashedPassword,
+        name: fullName,
+        role: 'CUSTOMER',
+        loginMethod: 'email',
+        openId: 'user_' + Date.now(),
+      });
+      
+      res.json({ success: true, message: "註冊成功，請登入" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "註冊失敗" });
+    }
+  });
+  
   // tRPC API
   app.use(
     "/api/trpc",
