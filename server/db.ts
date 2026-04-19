@@ -1,4 +1,4 @@
-import { eq, and, gte, lt, lte } from "drizzle-orm";
+import { eq, and, gte, lt, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, customers, orders, schedules, InsertCustomer, InsertOrder, InsertSchedule } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -114,7 +114,14 @@ export async function createOrder(data: InsertOrder): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(orders).values(data);
-  return (result as any).insertId || 0;
+  // 正確取得 insertId - Drizzle mysql2 返回格式可能不同
+  const insertId = (result as any)[0]?.insertId ?? (result as any).insertId ?? 0;
+  if (insertId === 0) {
+    // 如果無法取得 insertId，則查詢最新插入的記錄
+    const inserted = await db.select({ id: orders.id }).from(orders).orderBy(sql`id DESC`).limit(1);
+    return inserted.length > 0 ? inserted[0].id : 0;
+  }
+  return insertId;
 }
 
 export async function getOrdersByCustomerId(customerId: number) {
@@ -229,7 +236,8 @@ export async function updateScheduleDeliveryTime(scheduleId: number, deliveryTim
 export async function markScheduleAsCompleted(scheduleId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(schedules).set({ isCompleted: true, completedAt: new Date() }).where(eq(schedules.id, scheduleId));
+  // schedules 表沒有 completedAt 欄位，只更新 isCompleted
+  await db.update(schedules).set({ isCompleted: true }).where(eq(schedules.id, scheduleId));
 }
 
 export async function completeOrder(orderId: number) {
