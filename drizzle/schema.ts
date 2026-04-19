@@ -21,6 +21,7 @@ export const orders = mysqlTable("orders", {
 	notes: text(),
 	orderStatus: mysqlEnum(['pending','scheduled','completed','cancelled']).default('pending').notNull(),
 	status: mysqlEnum(['pending','completed']).default('pending').notNull(),
+	estimatedCompletionDate: timestamp({ mode: 'string' }),
 	completedAt: timestamp({ mode: 'string' }),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),

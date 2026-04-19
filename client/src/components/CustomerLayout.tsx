@@ -17,22 +17,23 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
     setLocation("/login");
   };
 
+  // 導航菜單項目 - 無 Emoji，使用純文字和符號
   const navItems = [
-    { label: "首頁", path: "/customer/home", icon: "H" },
-    { label: "新增訂單", path: "/customer/new-order", icon: "+" },
-    { label: "歷史訂單", path: "/customer/history", icon: "L" },
-    { label: "個人資料", path: "/customer/profile", icon: "P" },
+    { label: "首頁", path: "/customer/home", symbol: "◆" },
+    { label: "新增訂單", path: "/customer/new-order", symbol: "▪" },
+    { label: "歷史訂單", path: "/customer/history", symbol: "▲" },
+    { label: "個人資料", path: "/customer/profile", symbol: "●" },
   ];
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* 側邊欄 */}
+      {/* 側邊欄 - 簡潔明亮風格 */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-20"
         } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col shadow-sm`}
       >
-        {/* Logo */}
+        {/* Logo 區域 */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className={`font-bold text-lg text-blue-600 ${!sidebarOpen && "hidden"}`}>
@@ -41,8 +42,9 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-1 hover:bg-gray-100 rounded transition"
+              aria-label={sidebarOpen ? "收起側邊欄" : "展開側邊欄"}
             >
-              <span className="text-xl">{sidebarOpen ? "←" : "≡"}</span>
+              <span className="text-xl">{sidebarOpen ? "◀" : "▶"}</span>
             </button>
           </div>
         </div>
@@ -54,9 +56,10 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
               key={item.path}
               onClick={() => setLocation(item.path)}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-700 hover:text-blue-600 transition text-left"
+              aria-label={item.label}
             >
-              <span className="w-6 h-6 flex items-center justify-center bg-blue-100 rounded text-blue-600 font-semibold text-sm flex-shrink-0">
-                {item.icon}
+              <span className="w-6 h-6 flex items-center justify-center text-blue-600 font-semibold text-sm flex-shrink-0">
+                {item.symbol}
               </span>
               {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
             </button>
@@ -68,7 +71,7 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
           {sidebarOpen && (
             <div className="text-xs text-gray-600 space-y-1">
               <p className="font-semibold text-gray-800">{user?.name || "使用者"}</p>
-              <p className="text-gray-500">{user?.email}</p>
+              <p className="text-gray-500 truncate">{user?.email}</p>
             </div>
           )}
           <Button
