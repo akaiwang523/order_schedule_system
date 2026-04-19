@@ -315,3 +315,10 @@ export async function getCustomerOrderHistory(customerId: number) {
     .where(eq(orders.customerId, customerId))
     .orderBy(orders.createdAt);
 }
+
+
+export async function updateCustomer(customerId: number, data: Partial<Omit<InsertCustomer, 'userId'>>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(customers).set(data).where(eq(customers.id, customerId));
+}
