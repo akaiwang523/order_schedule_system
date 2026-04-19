@@ -104,8 +104,17 @@ export async function upsertCustomer(userId: number, data: Omit<InsertCustomer, 
   const existing = await getCustomerByUserId(userId);
   if (existing) {
     await db.update(customers).set(data).where(eq(customers.userId, userId));
+    return existing.id;
   } else {
-    await db.insert(customers).values({ ...data, userId });
+    const result = await db.insert(customers).values({ ...data, userId });
+    // 正確取得 insertId
+    const insertId = (result as any)[0]?.insertId ?? (result as any).insertId ?? 0;
+    if (insertId === 0) {
+      // 如果無法取得 insertId，則查詢新插入的記錄
+      const inserted = await db.select({ id: customers.id }).from(customers).where(eq(customers.userId, userId)).limit(1);
+      return inserted.length > 0 ? inserted[0].id : 0;
+    }
+    return insertId;
   }
 }
 
@@ -322,4 +331,11 @@ export async function getCustomerOrderHistory(customerId: number) {
     .from(orders)
     .where(eq(orders.customerId, customerId))
     .orderBy(orders.createdAt);
+}
+
+
+export async function updateCustomer(customerId: number, data: Partial<Omit<InsertCustomer, 'userId'>>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(customers).set(data).where(eq(customers.id, customerId));
 }

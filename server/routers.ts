@@ -1,4 +1,3 @@
-import { COOKIE_NAME } from "../shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
@@ -18,144 +17,63 @@ import {
   getScheduleByOrderId,
   updateScheduleDate,
   getDb,
+  getCustomers,
+  updateCustomer,
   getOrdersByDate,
-  getAllCustomers,
-  getCustomerOrderHistory,
-  getAllSchedules,
-} from "./db";
+} from "../server/db";
 import { TRPCError } from "@trpc/server";
-import crypto from "crypto";
-import { users } from "../drizzle/schema";
-import { eq, and, gte, lt } from "drizzle-orm";
-
-function hashPassword(password: string) {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
 
 export const appRouter = router({
-  system: systemRouter,
-  auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+  auth: {
+    me: protectedProcedure.query(async ({ ctx }) => {
+      return ctx.user;
     }),
-    login: publicProcedure
-      .input(
-        z.object({
-          email: z.string().email(),
-          password: z.string().min(1),
-        })
-      )
-      .mutation(async ({ input }) => {
-        const hashedPassword = hashPassword(input.password);
-        
-        const db = await getDb();
-        if (!db) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Database connection failed',
-          });
-        }
-        
-        const result = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, input.email))
-          .limit(1);
-        
-        if (result.length === 0 || result[0].password !== hashedPassword) {
-          throw new TRPCError({
-            code: 'UNAUTHORIZED',
-            message: '帳號或密碼錯誤',
-          });
-        }
-        
-        return {
-          id: result[0].id,
-          email: result[0].email,
-          name: result[0].name,
-          role: result[0].role,
-          token: 'token_' + result[0].id,
-        };
-      }),
-    register: publicProcedure
-      .input(
-        z.object({
-          email: z.string().email(),
-          password: z.string().min(6),
-          fullName: z.string().min(1),
-        })
-      )
-      .mutation(async ({ input }) => {
-        const hashedPassword = hashPassword(input.password);
-        
-        const db = await getDb();
-        if (!db) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Database connection failed',
-          });
-        }
-        
-        const existingUser = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, input.email))
-          .limit(1);
-        
-        if (existingUser.length > 0) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: '該 Email 已被註冊',
-          });
-        }
-        
-        await db.insert(users).values({
-          email: input.email,
-          password: hashedPassword,
-          name: input.fullName,
-          role: 'user',
-          loginMethod: 'email',
-          openId: 'user_' + Date.now(),
-        });
-        
-        return {
-          success: true,
-          message: '註冊成功，請登入',
-        };
-      }),
-  }),
 
-  // Customer procedures
-  customer: router({
+    logout: protectedProcedure.mutation(async ({ ctx }) => {
+      ctx.res.clearCookie("session");
+      return { success: true };
+    }),
+  },
+
+  system: systemRouter,
+
+  customer: {
     getProfile: protectedProcedure.query(async ({ ctx }) => {
-      return await getCustomerByUserId(ctx.user.id);
+      const customer = await getCustomerByUserId(ctx.user.id);
+      if (!customer) {
+        return null;
+      }
+      return customer;
     }),
 
     updateProfile: protectedProcedure
       .input(
         z.object({
           fullName: z.string().min(1),
-          address: z.string().min(1),
           phone: z.string().min(1),
+          address: z.string().min(1),
         })
       )
       .mutation(async ({ ctx, input }) => {
-        await upsertCustomer(ctx.user.id, {
+        const customer = await getCustomerByUserId(ctx.user.id);
+        if (!customer) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Customer profile not found",
+          });
+        }
+
+        await updateCustomer(customer.id, {
           fullName: input.fullName,
-          address: input.address,
           phone: input.phone,
+          address: input.address,
         });
+
         return { success: true };
       }),
-  }),
+  },
 
-  // Order procedures
-  order: router({
+  order: {
     create: protectedProcedure
       .input(
         z.object({
@@ -167,24 +85,27 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         let customer = await getCustomerByUserId(ctx.user.id);
+        let customerId: number;
+
         if (!customer) {
-          // 自動為用戶創建 customer 記錄
-          await upsertCustomer(ctx.user.id, {
+          // 自動為用戶創建 customer 記錄，並使用返回的 ID
+          customerId = await upsertCustomer(ctx.user.id, {
             fullName: ctx.user.name || "User",
             phone: "",
             address: "",
           });
-          customer = await getCustomerByUserId(ctx.user.id);
-          if (!customer) {
+          if (customerId === 0) {
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "Failed to create customer profile",
             });
           }
+        } else {
+          customerId = customer.id;
         }
 
         const orderId = await createOrder({
-          customerId: customer.id,
+          customerId: customerId,
           deliveryType: input.deliveryType,
           bagCount: input.bagCount,
           paymentMethod: input.paymentMethod,
@@ -209,51 +130,110 @@ export const appRouter = router({
 
     getMyOrders: protectedProcedure.query(async ({ ctx }) => {
       const customer = await getCustomerByUserId(ctx.user.id);
-      if (!customer) return [];
+      if (!customer) {
+        return [];
+      }
+
       return await getOrdersByCustomerId(customer.id);
     }),
 
     getAll: protectedProcedure.query(async ({ ctx }) => {
+      // 只有 admin 可以查看所有訂單
       if (ctx.user.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins can view all orders",
         });
       }
+
       return await getAllOrders();
     }),
 
     getById: protectedProcedure
       .input(z.object({ orderId: z.number() }))
-      .query(async ({ input }) => {
-        return await getOrderById(input.orderId);
+      .query(async ({ ctx, input }) => {
+        const order = await getOrderById(input.orderId);
+        if (!order) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Order not found",
+          });
+        }
+
+        // 檢查權限：只有 admin 或訂單所有者可以查看
+        if (ctx.user.role !== "admin") {
+          const customer = await getCustomerByUserId(ctx.user.id);
+          if (!customer || customer.id !== order.customerId) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "You do not have permission to view this order",
+            });
+          }
+        }
+
+        return order;
       }),
 
     getByDate: protectedProcedure
-      .input(z.object({ date: z.string() }))
+      .input(z.object({ date: z.coerce.date() }))
       .query(async ({ ctx, input }) => {
+        // 只有 admin 可以按日期查詢訂單
         if (ctx.user.role !== "admin") {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: "Only admins can view orders by date",
+            message: "Only admins can query orders by date",
           });
         }
-        const date = new Date(input.date);
-        return await getOrdersByDate(date);
-      }),
-  }),
 
-  // Schedule procedures
-  schedule: router({
-    getTodaySchedules: protectedProcedure.query(async ({ ctx }) => {
-      if (ctx.user.role === "user") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Buyers cannot view schedules",
-        });
-      }
-      return await getSchedulesByDate(new Date());
-    }),
+        return await getOrdersByDate(input.date);
+      }),
+
+    updateStatus: protectedProcedure
+      .input(
+        z.object({
+          orderId: z.number(),
+          status: z.enum(["pending", "completed"]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        // 只有 admin 可以更新訂單狀態
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Only admins can update order status",
+          });
+        }
+
+        const order = await getOrderById(input.orderId);
+        if (!order) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Order not found",
+          });
+        }
+
+        if (input.status === "completed") {
+          await completeOrder(input.orderId);
+        }
+
+        return { success: true };
+      }),
+  },
+
+  schedule: {
+    getByDate: protectedProcedure
+      .input(z.object({ date: z.coerce.date() }))
+      .query(async ({ ctx, input }) => {
+        // 只有 admin 可以查詢排程
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Only admins can view schedules",
+          });
+        }
+
+        return await getSchedulesByDate(input.date);
+      }),
 
     updateDeliveryTime: protectedProcedure
       .input(
@@ -263,98 +243,53 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        // 只有 admin 可以更新配送時間
         if (ctx.user.role !== "admin") {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "Only admins can update delivery time",
           });
         }
+
         await updateScheduleDeliveryTime(input.scheduleId, input.deliveryTime);
         return { success: true };
       }),
 
-    markCompleted: protectedProcedure
+    markAsCompleted: protectedProcedure
       .input(z.object({ scheduleId: z.number() }))
       .mutation(async ({ ctx, input }) => {
+        // 只有 admin 可以標記排程為已完成
         if (ctx.user.role !== "admin") {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "Only admins can mark schedules as completed",
           });
         }
+
         await markScheduleAsCompleted(input.scheduleId);
         return { success: true };
       }),
 
-    getByOrderId: protectedProcedure
-      .input(z.object({ orderId: z.number() }))
-      .query(async ({ input }) => {
-        return await getScheduleByOrderId(input.orderId);
-      }),
-
-    completeOrder: protectedProcedure
-      .input(z.object({ orderId: z.number() }))
+    updateDate: protectedProcedure
+      .input(
+        z.object({
+          scheduleId: z.number(),
+          newDate: z.coerce.date(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
+        // 只有 admin 可以更新排程日期
         if (ctx.user.role !== "admin") {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: "Only admins can complete orders",
+            message: "Only admins can update schedule date",
           });
         }
-        await completeOrder(input.orderId);
+
+        await updateScheduleDate(input.scheduleId, input.newDate);
         return { success: true };
       }),
-
-    updateScheduleDate: protectedProcedure
-      .input(z.object({ orderId: z.number(), newDate: z.string() }))
-      .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin") {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Only admins can update schedule dates",
-          });
-        }
-        const newDate = new Date(input.newDate);
-        newDate.setHours(0, 0, 0, 0);
-        await updateScheduleDate(input.orderId, newDate);
-        return { success: true };
-      }),
-
-    getAllSchedules: protectedProcedure.query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only admins can view all schedules",
-        });
-      }
-      return await getAllSchedules();
-    }),
-  }),
-
-  // Admin customer procedures
-  adminCustomer: router({
-    getAll: protectedProcedure.query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only admins can view all customers",
-        });
-      }
-      return await getAllCustomers();
-    }),
-
-    getOrderHistory: protectedProcedure
-      .input(z.object({ customerId: z.number() }))
-      .query(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin") {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Only admins can view customer order history",
-          });
-        }
-        return await getCustomerOrderHistory(input.customerId);
-      }),
-  }),
+  },
 });
 
 export type AppRouter = typeof appRouter;
