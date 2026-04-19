@@ -286,12 +286,11 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new Error('Database not available');
         
-        // 更新訂單進度
-        await db.execute(`
-          UPDATE orders 
-          SET progress = ?, updatedAt = NOW()
-          WHERE id = ?
-        `, [input.progress, input.orderId]);
+        // 使用 Drizzle query builder 更新訂單進度
+        await db.update(orders).set({
+          progress: input.progress,
+          updatedAt: new Date(),
+        }).where(eq(orders.id, input.orderId));
         
         return { success: true };
       }),

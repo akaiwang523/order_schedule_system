@@ -4,6 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 
+const PROGRESS_LABELS: Record<string, string> = {
+  pending: "尚未收件",
+  received: "已收件",
+  washing: "清洗中",
+  returning: "準備送回",
+  completed: "完成",
+};
+
+const PROGRESS_COLORS: Record<string, string> = {
+  pending: "bg-gray-100 text-gray-800",
+  received: "bg-blue-100 text-blue-800",
+  washing: "bg-yellow-100 text-yellow-800",
+  returning: "bg-orange-100 text-orange-800",
+  completed: "bg-green-100 text-green-800",
+};
+
 export default function CustomerHome() {
   const { user } = useAuth();
 
@@ -46,6 +62,17 @@ export default function CustomerHome() {
     });
   };
 
+  const getProgressIcon = (progress: string) => {
+    const icons: Record<string, string> = {
+      pending: "⏳",
+      received: "✓",
+      washing: "🔄",
+      returning: "→",
+      completed: "✓",
+    };
+    return icons[progress] || "•";
+  };
+
   return (
     <CustomerLayout>
       <div className="space-y-8">
@@ -76,6 +103,9 @@ export default function CustomerHome() {
               <div className="space-y-4">
                 {pendingOrders.map((order: any, index: number) => {
                   const orderNumber = generateOrderNumber(order.createdAt, index);
+                  const progress = order.progress || "pending";
+                  const progressLabel = PROGRESS_LABELS[progress] || "尚未收件";
+                  const progressColor = PROGRESS_COLORS[progress] || "bg-gray-100 text-gray-800";
                   return (
                     <div
                       key={order.id}
@@ -86,9 +116,12 @@ export default function CustomerHome() {
                           <p className="text-sm font-medium text-gray-500">訂單編號</p>
                           <p className="text-lg font-bold text-gray-900">{orderNumber}</p>
                         </div>
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                          {order.orderStatus === "pending" ? "待處理" : "已排程"}
-                        </span>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500 mb-1">進度</p>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${progressColor}`}>
+                            {getProgressIcon(progress)} {progressLabel}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 mb-3">
@@ -102,8 +135,20 @@ export default function CustomerHome() {
                         </div>
                       </div>
 
+                      {/* 進度詳情 */}
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          <span className="font-semibold">當前進度：</span>
+                          {progress === "completed" && "✓ 已完成"}
+                          {progress === "returning" && "→ 準備送回"}
+                          {progress === "washing" && "🔄 清洗中"}
+                          {progress === "received" && "✓ 已收件"}
+                          {progress === "pending" && "⏳ 尚未收件"}
+                        </p>
+                      </div>
+
                       {order.estimatedCompletion && (
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                           <p className="text-sm text-amber-800">
                             <span className="font-semibold">預計完成日期：</span>
                             {formatDate(order.estimatedCompletion)}

@@ -20,10 +20,7 @@ export function useAuth() {
     if (userStr) {
       try {
         const userData = JSON.parse(userStr);
-        // 確保 role 是大寫
-        if (userData.role) {
-          userData.role = userData.role.toUpperCase();
-        }
+        // 保持 role 小寫以匹配後端
         console.log("[useAuth] 從 localStorage 讀取用戶:", userData);
         setUser(userData);
         return userData;
@@ -57,10 +54,7 @@ export function useAuth() {
         if (e.newValue) {
           try {
             const userData = JSON.parse(e.newValue);
-            // 確保 role 是大寫
-            if (userData.role) {
-              userData.role = userData.role.toUpperCase();
-            }
+            // 保持 role 小寫以匹配後端
             console.log("[useAuth] 從 storage 事件更新用戶:", userData);
             setUser(userData);
           } catch (err) {
