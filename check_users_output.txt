@@ -1,0 +1,50 @@
+Users in database: [
+  {
+    "id": 1,
+    "openId": "Rytu9tQfAF6qrjdUHTEzUC",
+    "name": "Chen",
+    "email": "salina861229@gmail.com",
+    "loginMethod": "google",
+    "role": "admin",
+    "createdAt": "2026-04-15 07:33:50",
+    "updatedAt": "2026-04-19 08:19:31",
+    "lastSignedIn": "2026-04-19 04:19:31",
+    "password": null
+  },
+  {
+    "id": 180035,
+    "openId": "test-admin-user",
+    "name": "測試管理者",
+    "email": "admin@test.com",
+    "loginMethod": "test",
+    "role": "admin",
+    "createdAt": "2026-04-16 05:39:27",
+    "updatedAt": "2026-04-18 06:31:17",
+    "lastSignedIn": "2026-04-16 05:39:27",
+    "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
+  },
+  {
+    "id": 180053,
+    "openId": "simple-admin-user",
+    "name": "管理者",
+    "email": "admin@test.com",
+    "loginMethod": "simple",
+    "role": "admin",
+    "createdAt": "2026-04-16 05:48:30",
+    "updatedAt": "2026-04-18 06:31:17",
+    "lastSignedIn": "2026-04-16 05:48:31",
+    "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
+  },
+  {
+    "id": 330018,
+    "openId": "user_1776492253333",
+    "name": "測試客戶",
+    "email": "user@test.com",
+    "loginMethod": "email",
+    "role": "user",
+    "createdAt": "2026-04-18 06:04:13",
+    "updatedAt": "2026-04-18 06:04:13",
+    "lastSignedIn": "2026-04-18 06:04:13",
+    "password": "e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446"
+  }
+]

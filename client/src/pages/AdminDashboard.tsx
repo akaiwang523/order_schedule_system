@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -12,28 +12,40 @@ export default function AdminDashboard() {
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
 
-  // 獲取所有訂單
-  const { data: allOrders, isLoading: ordersLoading } = trpc.order.getAll.useQuery();
+  // 獲取待處理訂單
+  const { data: pendingOrdersData, isLoading: ordersLoading, refetch } = trpc.order.getPending.useQuery();
 
   // 完成訂單的 mutation
   const completeOrderMutation = trpc.schedule.completeOrder.useMutation({
     onSuccess: (_, variables) => {
       // 從待處理訂單中移除
       setPendingOrders(pendingOrders.filter(order => order.id !== variables.orderId));
+      // 重新獲取待處理訂單列表
+      refetch();
     },
   });
 
   // 初始化待處理訂單
   useEffect(() => {
-    if (allOrders) {
-      const pending = allOrders.filter((order: any) => order.status !== 'completed');
-      setPendingOrders(pending);
+    if (pendingOrdersData) {
+      setPendingOrders(pendingOrdersData);
       setIsLoadingOrders(false);
     }
-  }, [allOrders]);
+  }, [pendingOrdersData]);
+
+  // 自動更新機制 - 每 5 秒重新獲取待處理訂單
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 5000); // 5 秒
+
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   const handleCompleteOrder = (orderId: number) => {
     completeOrderMutation.mutate({ orderId });
+    // 立即重新獲取待處理訂單
+    refetch();
   };
 
   // 生成訂單編號
@@ -77,6 +89,9 @@ export default function AdminDashboard() {
               month: "long",
               day: "numeric",
             })}
+            <span className="ml-4 text-xs text-gray-500">
+              {ordersLoading ? "更新中..." : "已同步"}
+            </span>
           </p>
         </div>
 
@@ -97,22 +112,28 @@ export default function AdminDashboard() {
                     <tr>
                       <th className="text-left py-2 px-4">訂單編號</th>
                       <th className="text-left py-2 px-4">客戶姓名</th>
-                      <th className="text-left py-2 px-4">訂單內容</th>
-                      <th className="text-left py-2 px-4">聯絡電話</th>
+                      <th className="text-left py-2 px-4">袋數</th>
+                      <th className="text-left py-2 px-4">支付方式</th>
+                      <th className="text-left py-2 px-4">備註</th>
                       <th className="text-left py-2 px-4">操作</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pendingOrders.map((order: any, index: number) => {
                       const orderNumber = generateOrderNumber(order, index);
+                      const paymentLabels: Record<string, string> = {
+                        cash: "現金",
+                        credit_card: "信用卡",
+                        line_pay: "LINE Pay",
+                        points: "點數",
+                      };
                       return (
                         <tr key={order.id} className="border-b border-gray-700 hover:bg-gray-800">
                           <td className="py-2 px-4 font-semibold text-blue-400">{orderNumber}</td>
                           <td className="py-2 px-4">{order.customerName || "未知客戶"}</td>
-                          <td className="py-2 px-4">
-                            {getCategoryLabel(order.deliveryType)} {order.bagCount} 袋
-                          </td>
-                          <td className="py-2 px-4">{order.customerPhone || "未提供"}</td>
+                          <td className="py-2 px-4">{order.bagCount} 袋</td>
+                          <td className="py-2 px-4">{paymentLabels[order.paymentMethod] || order.paymentMethod}</td>
+                          <td className="py-2 px-4 text-gray-400 max-w-xs truncate">{order.notes || "無"}</td>
                           <td className="py-2 px-4">
                             <Button
                               size="sm"

@@ -145,9 +145,18 @@
   - [x] 修改個人資料後，新增訂單自動填入獲取最新資料
   - [x] useEffect 監聽 Checkbox 狀態進行自動填入
 
-## API Query Error 修復（緊急）
-- [ ] 修正 JOIN 目標 - 確認是否應該 JOIN users 而不是 customers
-- [ ] 動態抓取 User ID - 使用 ctx.user.id 而不是硬編碼的 30001
-- [ ] 校對欄位名稱 - 確認 estimatedCompletion 欄位
-- [ ] 重新生成代碼 - 執行 drizzle-kit push
-- [ ] 測試修復後的查詢功能
+## API Query Error 修複（緊急）
+- [x] 修正 JOIN 目標 - 確認是否應該 JOIN users 而不是 customers
+- [x] 動態抽取 User ID - 使用 ctx.user.id 而不是策編碼的 30001
+- [x] 校對欄位名稱 - 確認 estimatedCompletion 欄位
+- [x] 重新產生代碼 - 執行 drizzle-kit push
+- [x] 測試修複後的查詢功能
+
+
+## 跨帳戶訂單即時連動功能（新增）
+- [x] 修復資料庫遷移 - 添加 estimatedCompletion 欄位
+- [x] 實作後端 tRPC 查詢程序 - order.getPending 獲取所有待處理訂單
+- [x] 實作管理員首頁待處理訂單區塊 - 顯示客戶姓名、袋數、支付方式、備註
+- [x] 實作自動更新機制 - 輪詢或事件通知
+- [x] 測試跨帳戶訂單即時連動功能
+- [x] 編寫並執行 Vitest 集成測試 - 所有測試通過 (6/6)

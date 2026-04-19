@@ -169,14 +169,14 @@ export async function getOrdersByUserId(userId: number) {
       completedAt: orders.completedAt,
       createdAt: orders.createdAt,
       updatedAt: orders.updatedAt,
-      customerName: customers.fullName,
+      customerName: users.name,
       customerPhone: customers.phone,
       customerAddress: customers.address,
     })
     .from(orders)
-    .innerJoin(customers, eq(orders.customerId, customers.id))
-    .innerJoin(users, eq(customers.userId, users.id))
-    .where(eq(customers.userId, userId));
+    .leftJoin(users, eq(orders.customerId, users.id))
+    .leftJoin(customers, eq(users.id, customers.userId))
+    .where(eq(orders.customerId, userId));
 }
 
 export async function getAllOrders() {

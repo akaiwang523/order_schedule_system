@@ -167,22 +167,20 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        // 確保 customer 記錄存在，並獲取 customerId
-        let customerId: number;
+        // 確保 customer 記錄存在（用於存儲客戶信息）
         const existing = await getCustomerByUserId(ctx.user.id);
-        if (existing) {
-          customerId = existing.id;
-        } else {
+        if (!existing) {
           // 自動為用戶創建 customer 記錄
-          customerId = await upsertCustomer(ctx.user.id, {
+          await upsertCustomer(ctx.user.id, {
             fullName: ctx.user.name || "User",
             phone: "",
             address: "",
           });
         }
 
+        // 直接使用 userId 作為 customerId（因為外鍵指向 users.id）
         const orderId = await createOrder({
-          customerId: customerId,
+          customerId: ctx.user.id,
           deliveryType: input.deliveryType,
           bagCount: input.bagCount,
           paymentMethod: input.paymentMethod,
@@ -236,6 +234,41 @@ export const appRouter = router({
         const date = new Date(input.date);
         return await getOrdersByDate(date);
       }),
+
+    getPending: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can view pending orders",
+        });
+      }
+      const db = await getDb();
+      if (!db) return [];
+      
+      const { orders: ordersTable } = await import("../drizzle/schema");
+      const result = await db.execute(`
+        SELECT 
+          o.id,
+          o.customerId,
+          o.deliveryType,
+          o.bagCount,
+          o.paymentMethod,
+          o.paymentStatus,
+          o.notes,
+          o.orderStatus,
+          o.estimatedCompletion,
+          o.completedAt,
+          o.createdAt,
+          o.updatedAt,
+          u.name as customerName,
+          u.email as customerEmail
+        FROM orders o
+        LEFT JOIN users u ON o.customerId = u.id
+        WHERE o.orderStatus = 'pending'
+        ORDER BY o.createdAt DESC
+      `);
+      return (result[0] as any[]) || [];
+    }),
   }),
 
   // Schedule procedures

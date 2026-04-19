@@ -52,7 +52,7 @@ export default function CustomerHistory() {
       <div className="space-y-8">
         {/* 頁面標題 */}
         <div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-2">歷史訂單</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">歷史訂單</h1>
           <p className="text-gray-600 text-lg">查看您的所有已完成訂單</p>
         </div>
 

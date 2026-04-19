@@ -17,12 +17,12 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
     setLocation("/login");
   };
 
-  // 導航菜單項目 - 無 Emoji，使用純文字和符號
+  // 導航菜單項目 - 無 Emoji 和符號
   const navItems = [
-    { label: "首頁", path: "/customer/home", symbol: "◆" },
-    { label: "新增訂單", path: "/customer/new-order", symbol: "▪" },
-    { label: "歷史訂單", path: "/customer/history", symbol: "▲" },
-    { label: "個人資料", path: "/customer/profile", symbol: "●" },
+    { label: "首頁", path: "/customer/home" },
+    { label: "新增訂單", path: "/customer/new-order" },
+    { label: "歷史訂單", path: "/customer/history" },
+    { label: "個人資料", path: "/customer/profile" },
   ];
 
   return (
@@ -30,7 +30,7 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
       {/* 側邊欄 - 簡潔明亮風格 */}
       <div
         className={`${
-          sidebarOpen ? "w-64" : "w-20"
+          sidebarOpen ? "w-48" : "w-16"
         } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col shadow-sm`}
       >
         {/* Logo 區域 */}
@@ -44,7 +44,7 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
               className="p-1 hover:bg-gray-100 rounded transition"
               aria-label={sidebarOpen ? "收起側邊欄" : "展開側邊欄"}
             >
-              <span className="text-xl">{sidebarOpen ? "◀" : "▶"}</span>
+              <span className="text-xl">{sidebarOpen ? "☰" : "☰"}</span>
             </button>
           </div>
         </div>
@@ -58,9 +58,6 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-700 hover:text-blue-600 transition text-left"
               aria-label={item.label}
             >
-              <span className="w-6 h-6 flex items-center justify-center text-blue-600 font-semibold text-sm flex-shrink-0">
-                {item.symbol}
-              </span>
               {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
             </button>
           ))}

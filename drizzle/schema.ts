@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, text, timestamp, mysqlEnum, tinyint, index, foreignKey } from "drizzle-orm/mysql-core";
+import { mysqlTable, int, varchar, text, timestamp, mysqlEnum, index, foreignKey, tinyint } from 'drizzle-orm/mysql-core';
 import { sql } from "drizzle-orm"
 
 export const users = mysqlTable("users", {
@@ -36,16 +36,14 @@ export const customers = mysqlTable("customers", {
 
 export const orders = mysqlTable("orders", {
 	id: int().autoincrement().notNull().primaryKey(),
-	customerId: int().notNull(),
+	customerId: int().notNull(), // 直接存儲 user ID
 	deliveryType: mysqlEnum(['pickup','delivery','self']).notNull(),
 	bagCount: int().notNull(),
 	paymentMethod: mysqlEnum(['cash','credit_card','line_pay','points']).notNull(),
 	paymentStatus: mysqlEnum(['unpaid','paid']).default('unpaid').notNull(),
 	notes: text(),
 	orderStatus: mysqlEnum(['pending','scheduled','completed','cancelled']).default('pending').notNull(),
-	status: varchar({ length: 50 }),
 	estimatedCompletion: timestamp({ mode: 'string' }),
-	estimatedCompletionDate: timestamp({ mode: 'string' }),
 	completedAt: timestamp({ mode: 'string' }),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
@@ -53,7 +51,7 @@ export const orders = mysqlTable("orders", {
 (table) => [
 	foreignKey({
 		columns: [table.customerId],
-		foreignColumns: [customers.id],
+		foreignColumns: [users.id],
 	}),
 ]);
 
