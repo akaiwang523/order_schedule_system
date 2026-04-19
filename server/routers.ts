@@ -269,6 +269,32 @@ export const appRouter = router({
       `);
       return (result[0] as any[]) || [];
     }),
+
+    updateProgress: protectedProcedure
+      .input(z.object({
+        orderId: z.number(),
+        progress: z.enum(['pending', 'received', 'washing', 'returning', 'completed']),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only admins can update order progress',
+          });
+        }
+        
+        const db = await getDb();
+        if (!db) throw new Error('Database not available');
+        
+        // 更新訂單進度
+        await db.execute(`
+          UPDATE orders 
+          SET progress = ?, updatedAt = NOW()
+          WHERE id = ?
+        `, [input.progress, input.orderId]);
+        
+        return { success: true };
+      }),
   }),
 
   // Schedule procedures

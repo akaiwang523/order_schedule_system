@@ -36,13 +36,15 @@ export const customers = mysqlTable("customers", {
 
 export const orders = mysqlTable("orders", {
 	id: int().autoincrement().notNull().primaryKey(),
-	customerId: int().notNull(), // 直接存儲 user ID
+	customerId: int().notNull(),
 	deliveryType: mysqlEnum(['pickup','delivery','self']).notNull(),
 	bagCount: int().notNull(),
 	paymentMethod: mysqlEnum(['cash','credit_card','line_pay','points']).notNull(),
 	paymentStatus: mysqlEnum(['unpaid','paid']).default('unpaid').notNull(),
 	notes: text(),
 	orderStatus: mysqlEnum(['pending','scheduled','completed','cancelled']).default('pending').notNull(),
+	orderNumber: varchar({ length: 20 }),
+	progress: mysqlEnum(['pending','received','washing','returning','completed']).default('pending').notNull(),
 	estimatedCompletion: timestamp({ mode: 'string' }),
 	completedAt: timestamp({ mode: 'string' }),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),

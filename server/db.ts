@@ -122,7 +122,23 @@ export async function upsertCustomer(userId: number, data: Omit<InsertCustomer, 
 export async function createOrder(data: InsertOrder): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(orders).values(data);
+  
+  // 生成當天遞增編號
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD
+  
+  // 查詢今天已有的訂單數
+  const todayOrders = await db.execute(`
+    SELECT COUNT(*) as count FROM orders 
+    WHERE DATE(createdAt) = CURDATE()
+  `);
+  
+  const count = (todayOrders[0] as any[])[0]?.count || 0;
+  const orderNumber = `${dateStr}-${String(count + 1).padStart(2, '0')}`;
+  
+  // 添加訂單編號到數據
+  const orderData = { ...data, orderNumber };
+  const result = await db.insert(orders).values(orderData);
   return (result as any).insertId || 0;
 }
 

@@ -50,6 +50,13 @@
       "when": 1776584968539,
       "tag": "0006_young_pride",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1776594229050,
+      "tag": "0007_even_speed_demon",
+      "breakpoints": true
     }
   ]
 }
