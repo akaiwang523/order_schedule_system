@@ -179,7 +179,7 @@ export const appRouter = router({
           deliveryType: input.deliveryType,
           bagCount: input.bagCount,
           paymentMethod: input.paymentMethod,
-          notes: input.notes || null,
+          notes: input.notes || "",
           paymentStatus: "unpaid",
           orderStatus: "pending",
           status: "pending",
