@@ -35,7 +35,10 @@ export function ProtectedRoute({
       const normalizedUserRole = userRole === "USER" ? "CUSTOMER" : userRole;
       const normalizedRequiredRole = requiredRoleUpper === "USER" ? "CUSTOMER" : requiredRoleUpper;
       
-      if (normalizedUserRole !== normalizedRequiredRole) {
+      // 特殊觀察：ADMIN 用戶可以以「模擬客戶」身份存取 CUSTOMER 路由
+      const isAdminAccessingCustomer = normalizedUserRole === "ADMIN" && normalizedRequiredRole === "CUSTOMER";
+      
+      if (normalizedUserRole !== normalizedRequiredRole && !isAdminAccessingCustomer) {
         // 非管理員試圖進入管理員頁面 → 導向客戶頁面
         if (normalizedRequiredRole === "ADMIN" && normalizedUserRole !== "ADMIN") {
           setLocation("/orders");

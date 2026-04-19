@@ -166,25 +166,22 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        let customer = await getCustomerByUserId(ctx.user.id);
-        if (!customer) {
+        // 確保 customer 記錄存在，並獲取 customerId
+        let customerId: number;
+        const existing = await getCustomerByUserId(ctx.user.id);
+        if (existing) {
+          customerId = existing.id;
+        } else {
           // 自動為用戶創建 customer 記錄
-          await upsertCustomer(ctx.user.id, {
+          customerId = await upsertCustomer(ctx.user.id, {
             fullName: ctx.user.name || "User",
             phone: "",
             address: "",
           });
-          customer = await getCustomerByUserId(ctx.user.id);
-          if (!customer) {
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to create customer profile",
-            });
-          }
         }
 
         const orderId = await createOrder({
-          customerId: customer.id,
+          customerId: customerId,
           deliveryType: input.deliveryType,
           bagCount: input.bagCount,
           paymentMethod: input.paymentMethod,

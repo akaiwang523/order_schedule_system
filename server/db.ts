@@ -97,15 +97,24 @@ export async function getCustomerByUserId(userId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function upsertCustomer(userId: number, data: Omit<InsertCustomer, 'userId'>) {
+export async function upsertCustomer(userId: number, data: Omit<InsertCustomer, 'userId'>): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const existing = await getCustomerByUserId(userId);
   if (existing) {
     await db.update(customers).set(data).where(eq(customers.userId, userId));
+    return existing.id;
   } else {
-    await db.insert(customers).values({ ...data, userId });
+    const result = await db.insert(customers).values({ ...data, userId });
+    const insertId = (result as any).insertId || 0;
+    if (insertId === 0) {
+      // 如果 insertId 為 0，重新查詢以獲取正確的 ID
+      const newCustomer = await getCustomerByUserId(userId);
+      if (newCustomer) return newCustomer.id;
+      throw new Error("Failed to get customer ID after insert");
+    }
+    return insertId;
   }
 }
 
