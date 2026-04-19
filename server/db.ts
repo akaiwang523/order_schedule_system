@@ -120,7 +120,28 @@ export async function createOrder(data: InsertOrder): Promise<number> {
 export async function getOrdersByCustomerId(customerId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(orders).where(eq(orders.customerId, customerId));
+  return await db
+    .select({
+      id: orders.id,
+      customerId: orders.customerId,
+      deliveryType: orders.deliveryType,
+      bagCount: orders.bagCount,
+      paymentMethod: orders.paymentMethod,
+      paymentStatus: orders.paymentStatus,
+      notes: orders.notes,
+      orderStatus: orders.orderStatus,
+      status: orders.status,
+      estimatedCompletionDate: orders.estimatedCompletionDate,
+      completedAt: orders.completedAt,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      customerName: customers.fullName,
+      customerPhone: customers.phone,
+      customerAddress: customers.address,
+    })
+    .from(orders)
+    .leftJoin(customers, eq(orders.customerId, customers.id))
+    .where(eq(orders.customerId, customerId));
 }
 
 export async function getAllOrders() {
@@ -138,6 +159,7 @@ export async function getAllOrders() {
       notes: orders.notes,
       orderStatus: orders.orderStatus,
       status: orders.status,
+      estimatedCompletionDate: orders.estimatedCompletionDate,
       completedAt: orders.completedAt,
       createdAt: orders.createdAt,
       updatedAt: orders.updatedAt,
@@ -258,6 +280,7 @@ export async function getOrdersByDate(date: Date) {
       notes: orders.notes,
       orderStatus: orders.orderStatus,
       status: orders.status,
+      estimatedCompletionDate: orders.estimatedCompletionDate,
       completedAt: orders.completedAt,
       createdAt: orders.createdAt,
       updatedAt: orders.updatedAt,
