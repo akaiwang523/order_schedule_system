@@ -35,13 +35,16 @@ export function ProtectedRoute({
       const normalizedUserRole = userRole === "user" ? "customer" : userRole;
       const normalizedRequiredRole = requiredRoleLower === "user" ? "customer" : requiredRoleLower;
       
-      // 特殊觀察：admin 用戶可以以「模擬客戶」身份存取 customer 路由
-      const isAdminAccessingCustomer = normalizedUserRole === "admin" && normalizedRequiredRole === "customer";
-      
-      if (normalizedUserRole !== normalizedRequiredRole && !isAdminAccessingCustomer) {
+      // 角色必須完全匹配
+      if (normalizedUserRole !== normalizedRequiredRole) {
         // 非管理員試圖進入管理員頁面 → 導向客戶頁面
         if (normalizedRequiredRole === "admin" && normalizedUserRole !== "admin") {
           setLocation("/customer/home");
+          return;
+        }
+        // 管理員試圖進入客戶頁面 → 導向管理員頁面
+        if (normalizedRequiredRole === "customer" && normalizedUserRole === "admin") {
+          setLocation("/admin/dashboard");
           return;
         }
         // 其他權限不符 → 導向指定頁面
