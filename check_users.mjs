@@ -1,6 +1,12 @@
-import { drizzle } from "drizzle-orm/mysql2";
-import { users } from "./drizzle/schema.ts";
+import { getDb } from './server/db.ts';
+import { sql } from 'drizzle-orm';
 
-const db = drizzle(process.env.DATABASE_URL);
-const result = await db.select().from(users);
-console.log("Users in database:", JSON.stringify(result, null, 2));
+const db = await getDb();
+if (!db) {
+  console.log('Database connection failed');
+  process.exit(1);
+}
+
+const result = await db.execute(sql`DESCRIBE users`);
+console.log('Users table structure:');
+console.log(result);

@@ -157,7 +157,7 @@ async function startServer() {
         email,
         password: hashedPassword,
         name: fullName,
-        role: 'CUSTOMER',
+        role: 'user',
         loginMethod: 'email',
         openId: 'user_' + Date.now(),
       });
