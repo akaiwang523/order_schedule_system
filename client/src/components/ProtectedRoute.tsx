@@ -4,7 +4,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: "ADMIN" | "CUSTOMER" | "STAFF" | "USER" | "user";
+  requiredRole?: "ADMIN" | "CUSTOMER" | "STAFF" | "USER" | "user" | "admin";
   redirectTo?: string;
 }
 
@@ -28,20 +28,20 @@ export function ProtectedRoute({
 
     // 檢查角色權限
     if (requiredRole) {
-      const userRole = (user.role || "").toUpperCase();
-      const requiredRoleUpper = (requiredRole || "").toUpperCase();
+      const userRole = (user.role || "").toLowerCase();
+      const requiredRoleLower = (requiredRole || "").toLowerCase();
       
-      // 特殊處理：CUSTOMER 和 USER 視為相同角色
-      const normalizedUserRole = userRole === "USER" ? "CUSTOMER" : userRole;
-      const normalizedRequiredRole = requiredRoleUpper === "USER" ? "CUSTOMER" : requiredRoleUpper;
+      // 特殊處理：customer 和 user 視為相同角色
+      const normalizedUserRole = userRole === "user" ? "customer" : userRole;
+      const normalizedRequiredRole = requiredRoleLower === "user" ? "customer" : requiredRoleLower;
       
-      // 特殊觀察：ADMIN 用戶可以以「模擬客戶」身份存取 CUSTOMER 路由
-      const isAdminAccessingCustomer = normalizedUserRole === "ADMIN" && normalizedRequiredRole === "CUSTOMER";
+      // 特殊觀察：admin 用戶可以以「模擬客戶」身份存取 customer 路由
+      const isAdminAccessingCustomer = normalizedUserRole === "admin" && normalizedRequiredRole === "customer";
       
       if (normalizedUserRole !== normalizedRequiredRole && !isAdminAccessingCustomer) {
         // 非管理員試圖進入管理員頁面 → 導向客戶頁面
-        if (normalizedRequiredRole === "ADMIN" && normalizedUserRole !== "ADMIN") {
-          setLocation("/orders");
+        if (normalizedRequiredRole === "admin" && normalizedUserRole !== "admin") {
+          setLocation("/customer/home");
           return;
         }
         // 其他權限不符 → 導向指定頁面

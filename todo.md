@@ -186,3 +186,12 @@
 - [x] 修復後端註冊程序 - 改正 role 值從 'CUSTOMER' 為 'user'
 - [x] 修復前端註冊表單和驗證
 - [x] 測試會員註冊功能 - 成功註冊並登入
+
+
+## 統一帳號登入頁面（新增需求）
+- [x] 調查測試帳號和新會員帳號進入頁面的差異
+- [x] 分析 App.tsx 路由邏輯和重定向規則
+- [x] 修復 AuthPage.tsx - 移除 role 大寫轉換，改為跳轉到 /customer/home
+- [x] 修復 App.tsx - 移除 /orders 路由，統一使用 /customer/home
+- [x] 修復 ProtectedRoute.tsx - 統一使用小寫 role 比較，改為重定向到 /customer/home
+- [x] 驗證所有 user 角色帳號進入相同的淺色客戶頁面

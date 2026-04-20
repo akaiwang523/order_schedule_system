@@ -28,7 +28,7 @@ export default function App() {
 
     // 已登入但在登入頁面 → 根據身份導向
     if (user && location === "/login") {
-      if (user.role === "ADMIN" || user.role === "admin") {
+      if (user.role === "admin") {
         setLocation("/admin/dashboard");
       } else {
         setLocation("/customer/home");
@@ -37,7 +37,7 @@ export default function App() {
     }
 
     // 非管理員試圖進入管理員頁面 → 導向客戶頁面
-    if (user && location.startsWith("/admin") && user.role !== "ADMIN" && user.role !== "admin") {
+    if (user && location.startsWith("/admin") && user.role !== "admin") {
       setLocation("/customer/home");
       return;
     }
@@ -79,11 +79,7 @@ export default function App() {
         </ProtectedRoute>
       )}
       
-      {location === "/orders" && (
-        <ProtectedRoute requiredRole="CUSTOMER">
-          <CustomerOrders />
-        </ProtectedRoute>
-      )}
+      {/* /orders 路由已移除，統一使用 /customer/home */}
       
       {location === "/customer/home" && (
         <ProtectedRoute requiredRole="CUSTOMER">
@@ -115,14 +111,14 @@ export default function App() {
        location !== "/admin/orders" &&
        location !== "/admin/customers" &&
        location !== "/admin/analytics" &&
-       location !== "/orders" &&
+
        location !== "/customer/home" &&
        location !== "/customer/new-order" &&
        location !== "/customer/history" &&
        location !== "/customer/profile" &&
        user && (
         <>
-          {user.role === "ADMIN" ? (
+          {user.role === "admin" ? (
             <AdminDashboard />
           ) : (
             <CustomerHome />

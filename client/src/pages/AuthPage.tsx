@@ -41,30 +41,27 @@ export default function AuthPage() {
       if (response.ok && data.id) {
         console.log("登入成功，用戶資料:", data);
         
-        // 將角色轉換為大寫以進行比較
-        const roleUpper = (data.role || "").toUpperCase();
-        
-        // 確保 data 中的角色也是大寫
-        const userData = { ...data, role: roleUpper };
+        // 保持角色為小寫（與資料庫一致）
+        const userData = data;
         
         // 調用 login 更新 localStorage 和 useAuth 狀態
         login(userData);
         
         console.log("已保存用戶資料到 localStorage，準備跳轉");
-        console.log("用戶角色:", roleUpper);
+        console.log("用戶角色:", userData.role);
 
         // 延遲跳轉以確保 useAuth 狀態已更新
         setTimeout(() => {
           console.log("執行跳轉邏輯");
-          if (roleUpper === "ADMIN") {
+          if (userData.role === "admin") {
             console.log("跳轉到管理員儀表板");
             window.location.href = "/admin/dashboard";
-          } else if (roleUpper === "STAFF") {
+          } else if (userData.role === "staff") {
             console.log("跳轉到員工排程");
             window.location.href = "/staff/schedule";
           } else {
-            console.log("跳轉到客戶訂單頁面");
-            window.location.href = "/orders";
+            console.log("跳轉到客戶首頁");
+            window.location.href = "/customer/home";
           }
         }, 50)
       } else {
