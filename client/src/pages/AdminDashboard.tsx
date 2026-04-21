@@ -35,6 +35,10 @@ export default function AdminDashboard() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [showProgressDialog, setShowProgressDialog] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [selectedOrderForComplete, setSelectedOrderForComplete] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredOrders, setFilteredOrders] = useState<any[]>([]);
 
   // 獲取待處理訂單
   const { data: pendingOrdersData, isLoading: ordersLoading, refetch } = trpc.order.getPending.useQuery();
@@ -63,9 +67,32 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (pendingOrdersData) {
       setPendingOrders(pendingOrdersData);
+      setFilteredOrders(pendingOrdersData);
       setIsLoadingOrders(false);
     }
   }, [pendingOrdersData]);
+
+  // 搜尋功能
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredOrders(pendingOrders);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = pendingOrders.filter((order: any) => {
+      const orderNumber = order.orderNumber || "";
+      const customerName = order.customerName || "";
+      const customerPhone = order.customerPhone || "";
+
+      return (
+        orderNumber.toLowerCase().includes(query) ||
+        customerName.toLowerCase().includes(query) ||
+        customerPhone.toLowerCase().includes(query)
+      );
+    });
+    setFilteredOrders(filtered);
+  }, [searchQuery, pendingOrders]);
 
   // 自動更新機制 - 每 5 秒重新獲取待處理訂單
   useEffect(() => {
@@ -76,10 +103,21 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [refetch]);
 
-  const handleCompleteOrder = (orderId: number) => {
-    completeOrderMutation.mutate({ orderId });
-    // 立即重新獲取待處理訂單
-    refetch();
+  const handleCompleteOrder = (order: any) => {
+    setSelectedOrderForComplete(order);
+    setShowCompleteConfirm(true);
+  };
+
+  const confirmCompleteOrder = () => {
+    if (selectedOrderForComplete) {
+      completeOrderMutation.mutate({ orderId: selectedOrderForComplete.id });
+      setShowCompleteConfirm(false);
+      setSelectedOrderForComplete(null);
+      // 導航到營業概況頁面
+      setTimeout(() => {
+        setLocation("/admin/business");
+      }, 500);
+    }
   };
 
   const handleProgressClick = (orderId: number) => {
@@ -96,33 +134,9 @@ export default function AdminDashboard() {
     }
   };
 
-  // 生成訂單編號
-  const generateOrderNumber = (order: any, index: number): string => {
-    // 優先使用資料庫中的 orderNumber
-    if (order.orderNumber) {
-      return order.orderNumber;
-    }
-
-    // 備用：根據 createdAt 生成
-    const createdAt = order.createdAt;
-    let dateStr = "";
-
-    if (typeof createdAt === "string") {
-      // 提取日期部分
-      const datePart = createdAt.split(" ")[0] || createdAt.split("T")[0];
-      const [year, month, day] = datePart.split("-");
-      const yy = year.slice(-2);
-      dateStr = `${yy}${month}${day}`;
-    } else if (createdAt instanceof Date) {
-      const year = String(createdAt.getFullYear()).slice(-2);
-      const month = String(createdAt.getMonth() + 1).padStart(2, "0");
-      const day = String(createdAt.getDate()).padStart(2, "0");
-      dateStr = `${year}${month}${day}`;
-    }
-
-    // 當日第幾單（從 01 開始）
-    const orderCount = String(index + 1).padStart(2, "0");
-    return `${dateStr}-${orderCount}`;
+  // 直接使用資料庫中的 orderNumber
+  const getOrderNumber = (order: any): string => {
+    return order.orderNumber || "未知編號";
   };
 
   const getCategoryLabel = (deliveryType: string) => {
@@ -162,6 +176,17 @@ export default function AdminDashboard() {
           </p>
         </div>
 
+        {/* 搜尋框 */}
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="搜尋訂單編號、客戶姓名或電話..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 text-white rounded-lg placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
         {/* 待處理訂單 */}
         <Card className="bg-gray-900 border-gray-700">
           <CardHeader>
@@ -186,8 +211,8 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pendingOrders.map((order: any, index: number) => {
-                      const orderNumber = generateOrderNumber(order, index);
+                    {filteredOrders.map((order: any) => {
+                      const orderNumber = getOrderNumber(order);
                       const paymentLabels: Record<string, string> = {
                         cash: "現金",
                         credit_card: "信用卡",
@@ -202,7 +227,7 @@ export default function AdminDashboard() {
                           <td className="py-2 px-4">{order.bagCount} 袋</td>
                           <td className="py-2 px-4">{paymentLabels[order.paymentMethod] || order.paymentMethod}</td>
                           <td className="py-2 px-4 text-gray-400 max-w-xs truncate">{order.notes || "無"}</td>
-                          <td className="py-2 px-4">
+                          <td className="py-2 px-4 flex gap-2">
                             <Button
                               size="sm"
                               className={`${getProgressColor(currentProgress)} text-white`}
@@ -211,6 +236,16 @@ export default function AdminDashboard() {
                             >
                               {PROGRESS_LABELS[currentProgress] || "尚未收件"}
                             </Button>
+                            {currentProgress === "completed" && (
+                              <Button
+                                size="sm"
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                                onClick={() => handleCompleteOrder(order)}
+                                disabled={completeOrderMutation.isPending}
+                              >
+                                刪除
+                              </Button>
+                            )}
                           </td>
 
                         </tr>
@@ -248,6 +283,32 @@ export default function AdminDashboard() {
               className="bg-gray-700 hover:bg-gray-600 text-white"
             >
               取消
+
+      {/* 完成訂單確認彈跳視窗 */}
+      <Dialog open={showCompleteConfirm} onOpenChange={setShowCompleteConfirm}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              確認該訂單（{selectedOrderForComplete?.orderNumber}）已完成？
+            </DialogTitle>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              onClick={() => setShowCompleteConfirm(false)}
+              className="bg-gray-700 hover:bg-gray-600 text-white"
+            >
+              否
+            </Button>
+            <Button
+              onClick={confirmCompleteOrder}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={completeOrderMutation.isPending}
+            >
+              是
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
             </Button>
           </DialogFooter>
         </DialogContent>
