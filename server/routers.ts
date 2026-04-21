@@ -26,7 +26,7 @@ import {
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import crypto from "crypto";
-import { users } from "../drizzle/schema";
+import { users, orders } from "../drizzle/schema";
 import { eq, and, gte, lt } from "drizzle-orm";
 
 function hashPassword(password: string) {
@@ -290,9 +290,10 @@ export const appRouter = router({
         
         // 使用 Drizzle query builder 更新訂單進度
         // 不手動設定 updatedAt，讓資料庫自動更新
-        await db.update(orders).set({
+        const { orders: ordersTable } = await import("../drizzle/schema");
+        await db.update(ordersTable).set({
           progress: input.progress,
-        }).where(eq(orders.id, input.orderId));
+        }).where(eq(ordersTable.id, input.orderId));
         
         return { success: true };
       }),
