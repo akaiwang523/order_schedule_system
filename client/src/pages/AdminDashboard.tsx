@@ -111,11 +111,13 @@ export default function AdminDashboard() {
       // 提取日期部分
       const datePart = createdAt.split(" ")[0] || createdAt.split("T")[0];
       const [year, month, day] = datePart.split("-");
-      dateStr = `${month}${day}`;
+      const yy = year.slice(-2);
+      dateStr = `${yy}${month}${day}`;
     } else if (createdAt instanceof Date) {
+      const year = String(createdAt.getFullYear()).slice(-2);
       const month = String(createdAt.getMonth() + 1).padStart(2, "0");
       const day = String(createdAt.getDate()).padStart(2, "0");
-      dateStr = `${month}${day}`;
+      dateStr = `${year}${month}${day}`;
     }
 
     // 當日第幾單（從 01 開始）

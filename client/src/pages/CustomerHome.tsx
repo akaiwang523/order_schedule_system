@@ -34,13 +34,14 @@ export default function CustomerHome() {
     });
   }, [myOrders]);
 
-  // 生成訂單編號 (MMDD-NN 格式)
+  // 生成訂單編號 (YYMMDD-NN 格式)
   const generateOrderNumber = (createdAt: string, index: number) => {
     const date = new Date(createdAt);
+    const year = String(date.getFullYear()).slice(-2);
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
     const sequence = String(index + 1).padStart(2, "0");
-    return `${month}${day}-${sequence}`;
+    return `${year}${month}${day}-${sequence}`;
   };
 
   const getDeliveryLabel = (deliveryType: string) => {

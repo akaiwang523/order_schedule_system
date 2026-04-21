@@ -1,0 +1,17 @@
+UPDATE orders SET orderNumber = '260416-01' WHERE id = 1;
+UPDATE orders SET orderNumber = '260416-02' WHERE id = 2;
+UPDATE orders SET orderNumber = '260416-03' WHERE id = 3;
+UPDATE orders SET orderNumber = '260416-04' WHERE id = 4;
+UPDATE orders SET orderNumber = '260416-05' WHERE id = 5;
+UPDATE orders SET orderNumber = '260416-06' WHERE id = 6;
+UPDATE orders SET orderNumber = '260416-07' WHERE id = 7;
+UPDATE orders SET orderNumber = '260419-01' WHERE id = 30001;
+UPDATE orders SET orderNumber = '260419-02' WHERE id = 30002;
+UPDATE orders SET orderNumber = '260419-03' WHERE id = 30003;
+UPDATE orders SET orderNumber = '260419-04' WHERE id = 30004;
+UPDATE orders SET orderNumber = '260419-05' WHERE id = 30005;
+UPDATE orders SET orderNumber = '260419-06' WHERE id = 30006;
+UPDATE orders SET orderNumber = '260419-07' WHERE id = 30007;
+UPDATE orders SET orderNumber = '260419-08' WHERE id = 30008;
+UPDATE orders SET orderNumber = '260420-01' WHERE id = 60001;
+UPDATE orders SET orderNumber = '260421-01' WHERE id = 90001;
