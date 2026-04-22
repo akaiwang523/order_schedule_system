@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import CustomerLayout from "@/components/CustomerLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,19 +12,43 @@ export default function Profile() {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastSyncedUserId, setLastSyncedUserId] = useState<number | null>(null);
 
-  // 獲取用戶資料
-  useEffect(() => {
-    if (user) {
-      setFullName(user.name || "");
-      setAddress(user.address || "");
-      setPhone(user.phone || "");
+  // 同步用戶資料到本地狀態 - 只在有新的有效數據時才更新
+  const syncUserData = useCallback(() => {
+    if (!user || !user.id) {
+      setIsLoading(false);
+      return;
     }
-  }, [user]);
+
+    // 只在用戶 ID 變化時才同步（避免重複同步）
+    if (lastSyncedUserId === user.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    // 使用新的用戶數據，但保留已有的數據以防止丟失
+    setFullName(prev => user.name || prev);
+    setAddress(prev => user.address || prev);
+    setPhone(prev => user.phone || prev);
+    setLastSyncedUserId(user.id);
+    setIsLoading(false);
+  }, [user, lastSyncedUserId]);
+
+  // 監聽用戶變化，同步數據
+  useEffect(() => {
+    syncUserData();
+  }, [user?.id, syncUserData]);
 
   // 更新個人資料 mutation
   const updateProfileMutation = trpc.customer.updateProfile.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // 成功更新後，立即更新本地狀態
+      if (data.fullName) setFullName(data.fullName);
+      if (data.address) setAddress(data.address);
+      if (data.phone) setPhone(data.phone);
+      
       alert("個人資訊已更新");
       setIsEditing(false);
     },
@@ -47,6 +71,20 @@ export default function Profile() {
       phone,
     });
   };
+
+  if (isLoading) {
+    return (
+      <CustomerLayout>
+        <div className="space-y-8 max-w-3xl">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">個人資料</h1>
+            <p className="text-gray-600 text-lg">查看和修改您的個人資訊</p>
+          </div>
+          <div className="text-center text-gray-500">載入中...</div>
+        </div>
+      </CustomerLayout>
+    );
+  }
 
   return (
     <CustomerLayout>
