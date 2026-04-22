@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import CustomerLayout from "@/components/CustomerLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,13 +41,37 @@ export default function Profile() {
     syncUserData();
   }, [user?.id, syncUserData]);
 
+  // 第一次載入時，從 localStorage 讀取保存的資料
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('customerProfile');
+    if (savedProfile) {
+      try {
+        const profile = JSON.parse(savedProfile);
+        if (profile.fullName) setFullName(profile.fullName);
+        if (profile.address) setAddress(profile.address);
+        if (profile.phone) setPhone(profile.phone);
+      } catch (e) {
+        console.error('Failed to parse saved profile:', e);
+      }
+    }
+  }, []);
+
   // 更新個人資料 mutation
   const updateProfileMutation = trpc.customer.updateProfile.useMutation({
     onSuccess: (data) => {
-      // 成功更新後，立即更新本地狀態
-      if (data.fullName) setFullName(data.fullName);
-      if (data.address) setAddress(data.address);
-      if (data.phone) setPhone(data.phone);
+      // 成功更新後，立即更新本地狀態並保存到前端頁面
+      const updatedProfile = {
+        fullName: data.fullName || fullName,
+        address: data.address || address,
+        phone: data.phone || phone,
+      };
+      
+      setFullName(updatedProfile.fullName);
+      setAddress(updatedProfile.address);
+      setPhone(updatedProfile.phone);
+      
+      // 自動保存到 localStorage（前端頁面）
+      localStorage.setItem('customerProfile', JSON.stringify(updatedProfile));
       
       alert("個人資訊已更新");
       setIsEditing(false);
@@ -65,11 +89,16 @@ export default function Profile() {
       return;
     }
 
-    await updateProfileMutation.mutateAsync({
+    // 先保存到 localStorage（前端頁面）
+    const profileData = {
       fullName,
       address,
       phone,
-    });
+    };
+    localStorage.setItem('customerProfile', JSON.stringify(profileData));
+
+    // 然後同步到後端
+    await updateProfileMutation.mutateAsync(profileData);
   };
 
   if (isLoading) {
@@ -202,32 +231,17 @@ export default function Profile() {
           <CardHeader>
             <CardTitle className="text-2xl text-gray-900">帳戶資訊</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-4">
             <div>
-              <p className="text-sm font-semibold text-gray-500 mb-2">電子郵件</p>
-              <p className="text-lg text-gray-900 font-medium">{user?.email || "未設定"}</p>
+              <p className="text-sm text-gray-600 mb-1">電子郵件</p>
+              <p className="text-gray-900 font-medium">{user?.email || "未設定"}</p>
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-500 mb-2">帳戶類型</p>
-              <p className="text-lg text-gray-900 font-medium">客戶</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-500 mb-2">加入時間</p>
-              <p className="text-lg text-gray-900 font-medium">
-                {user?.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString("zh-TW")
-                  : "未設定"}
-              </p>
+              <p className="text-sm text-gray-600 mb-1">登入方式</p>
+              <p className="text-gray-900 font-medium">{user?.loginMethod || "未知"}</p>
             </div>
           </CardContent>
         </Card>
-
-        {/* 提示信息 */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-700">
-            <span className="font-semibold">提示：</span> 修改個人資料後，新增訂單時勾選「同會員註冊資料」將自動填入最新的資訊。
-          </p>
-        </div>
       </div>
     </CustomerLayout>
   );

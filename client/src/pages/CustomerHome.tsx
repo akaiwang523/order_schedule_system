@@ -65,12 +65,12 @@ export default function CustomerHome() {
   return (
     <CustomerLayout>
       <div className="space-y-8">
-        {/* 歡迎語 - 大字顯示 */}
+        {/* 歡迎語 */}
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
             歡迎，{user?.name || "使用者"}
           </h1>
-          <p className="text-gray-600 text-xl">查看您的訂單狀態和進度</p>
+          <p className="text-gray-600 text-lg">查看您的訂單狀態和進度</p>
         </div>
 
         {/* 當前訂單列表 */}
@@ -100,10 +100,10 @@ export default function CustomerHome() {
                       key={order.id}
                       className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                     >
-                      <div className="mb-3">
+                      <div className="flex justify-between items-start mb-3">
                         <div>
                           <p className="text-sm font-medium text-gray-500">訂單編號</p>
-                          <p className="text-2xl font-bold text-gray-900">{orderNumber}</p>
+                          <p className="text-lg font-bold text-gray-900">{orderNumber}</p>
                         </div>
                       </div>
 

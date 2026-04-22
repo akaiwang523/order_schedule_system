@@ -104,10 +104,10 @@ export default function CustomerNewOrder() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 一：會元資料 */}
+          {/* 一、會元資料 */}
           <Card className="bg-white border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-2xl text-gray-900">一</CardTitle>
+              <CardTitle className="text-2xl text-gray-900">一、會元資料</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* 自動填入勾選框 */}
@@ -168,10 +168,10 @@ export default function CustomerNewOrder() {
             </CardContent>
           </Card>
 
-          {/* 二：訂單資訊 */}
+          {/* 二、訂單資訊 */}
           <Card className="bg-white border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-2xl text-gray-900">二</CardTitle>
+              <CardTitle className="text-2xl text-gray-900">二、訂單資訊</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* 袋數 */}
