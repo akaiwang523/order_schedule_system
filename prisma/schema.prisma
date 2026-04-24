@@ -1,0 +1,94 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  openId       String?   @unique @db.VarChar(64)
+  name         String?   @db.Text
+  email        String?   @db.VarChar(320)
+  loginMethod  String?   @db.VarChar(64)
+  role         String    @default("user") @db.Enum("user", "admin", "staff")
+  password     String?   @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @db.Timestamp(0)
+  updatedAt    DateTime  @updatedAt @db.Timestamp(0)
+  lastSignedIn DateTime  @default(now()) @db.Timestamp(0)
+
+  customers Customer[]
+  orders    Order[]
+
+  @@map("users")
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  fullName  String   @db.VarChar(255)
+  address   String   @db.Text
+  phone     String   @db.VarChar(20)
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+  updatedAt DateTime @updatedAt @db.Timestamp(0)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("customers")
+}
+
+model Order {
+  id                  Int      @id @default(autoincrement())
+  customerId          Int
+  deliveryType        String   @db.Enum("pickup", "delivery", "self")
+  bagCount            Int
+  paymentMethod       String   @db.Enum("cash", "credit_card", "line_pay", "points")
+  paymentStatus       String   @default("unpaid") @db.Enum("unpaid", "paid")
+  notes               String?  @db.Text
+  orderStatus         String   @default("pending") @db.Enum("pending", "scheduled", "completed", "cancelled")
+  orderNumber         String?  @db.VarChar(20)
+  progress            String   @default("pending") @db.Enum("pending", "received", "washing", "returning", "completed")
+  estimatedCompletion DateTime? @db.Timestamp(0)
+  completedAt         DateTime? @db.Timestamp(0)
+  createdAt           DateTime @default(now()) @db.Timestamp(0)
+  updatedAt           DateTime @updatedAt @db.Timestamp(0)
+
+  customer User @relation(fields: [customerId], references: [id])
+  schedules Schedule[]
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model Schedule {
+  id            Int      @id @default(autoincrement())
+  orderId       Int
+  scheduledDate DateTime @db.Timestamp(0)
+  deliveryTime  String?  @db.VarChar(10)
+  isCompleted   Boolean  @default(false) @db.TinyInt
+  createdAt     DateTime @default(now()) @db.Timestamp(0)
+  updatedAt     DateTime @updatedAt @db.Timestamp(0)
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("schedules")
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  itemNumber String  @db.VarChar(50)
+  notes     String?  @db.Text
+  photoUrl  String?  @db.Text
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+  updatedAt DateTime @updatedAt @db.Timestamp(0)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("orderItems")
+}
