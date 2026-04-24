@@ -153,11 +153,19 @@ function DashboardLayoutContent({
 
   return (
     <>
+      {/* Backdrop overlay */}
+      {!isCollapsed && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={toggleSidebar}
+          aria-hidden="true"
+        />
+      )}
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           collapsible="offcanvas"
           variant="floating"
-          className="border-r-0"
+          className="border-r-0 fixed md:static"
           disableTransition={isResizing}
         >
           <SidebarHeader className="h-16 justify-center">
@@ -243,7 +251,7 @@ function DashboardLayoutContent({
         />
       </div>
 
-      <SidebarInset>
+      <SidebarInset className="w-full">
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
