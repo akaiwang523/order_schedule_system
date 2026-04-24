@@ -156,6 +156,7 @@ function DashboardLayoutContent({
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           collapsible="offcanvas"
+          variant="floating"
           className="border-r-0"
           disableTransition={isResizing}
         >
