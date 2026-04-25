@@ -169,6 +169,7 @@ export const appRouter = router({
           bagCount: z.number().int().positive(),
           paymentMethod: z.enum(["cash", "credit_card", "line_pay", "points"]),
           notes: z.string().optional(),
+          itemLocation: z.enum(["lobby", "door", "other"]).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -192,6 +193,7 @@ export const appRouter = router({
           notes: input.notes || "",
           paymentStatus: "unpaid",
           orderStatus: "pending",
+          itemLocation: input.itemLocation || null,
         });
 
         // Create schedule for the order

@@ -280,7 +280,6 @@ export default function AdminDashboard() {
                       <th className="text-left py-2 px-4">訂單編號</th>
                       <th className="text-left py-2 px-4">客戶姓名</th>
                       <th className="text-left py-2 px-4">袋數</th>
-                      <th className="text-left py-2 px-4">支付方式</th>
                       <th className="text-left py-2 px-4">備註</th>
                       <th className="text-left py-2 px-4">進度</th>
                     </tr>
@@ -288,12 +287,6 @@ export default function AdminDashboard() {
                   <tbody>
                     {filteredOrders.map((order: any) => {
                       const orderNumber = getOrderNumber(order);
-                      const paymentLabels: Record<string, string> = {
-                        cash: "現金",
-                        credit_card: "信用卡",
-                        line_pay: "LINE Pay",
-                        points: "點數",
-                      };
                       const currentProgress = order.progress || "pending";
                       return (
                         <tr key={order.id} className="border-b border-gray-700 hover:bg-gray-800">
@@ -307,7 +300,6 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-2 px-4">{order.customerName || "未知客戶"}</td>
                           <td className="py-2 px-4">{order.bagCount} 袋</td>
-                          <td className="py-2 px-4">{paymentLabels[order.paymentMethod] || order.paymentMethod}</td>
                           <td className="py-2 px-4 text-gray-400 max-w-xs truncate">{order.notes || "無"}</td>
                           <td className="py-2 px-4">
                             <Button

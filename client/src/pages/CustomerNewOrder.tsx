@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import CustomerLayout from "@/components/CustomerLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function CustomerNewOrder() {
   const [, setLocation] = useLocation();
@@ -21,8 +28,15 @@ export default function CustomerNewOrder() {
   const [bagCount, setBagCount] = useState("");
   const [notes, setNotes] = useState("");
 
-  // 支付方式狀態（按鈕組）
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "line_pay" | "apple_pay" | "">("");
+  // 新增：衣物放置地點
+  const [itemLocation, setItemLocation] = useState<"lobby" | "door" | "other" | "">("");
+
+  // 新增：訂單相片
+  const [orderPhotos, setOrderPhotos] = useState<string[]>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 查詢最新的 customer profile
   const { data: customerProfile } = trpc.customer.getProfile.useQuery();
@@ -39,7 +53,6 @@ export default function CustomerNewOrder() {
   });
 
   // 當勾選自動填入時，從最新的 customer profile 填充
-  // 使用 useEffect 監聽 Checkbox 狀態和 customerProfile 變化
   useEffect(() => {
     if (useUserInfo && customerProfile) {
       setCustomerName(customerProfile.fullName || "");
@@ -52,6 +65,50 @@ export default function CustomerNewOrder() {
       setCustomerAddress("");
     }
   }, [useUserInfo, customerProfile]);
+
+  // 拍照功能
+  const handleTakePhoto = () => {
+    fileInputRef.current?.click();
+  };
+
+  // 處理照片上傳
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingPhoto(true);
+      
+      // 上傳照片到 S3
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload-photo', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) throw new Error('Upload failed');
+      
+      const data = await response.json();
+      const photoUrl = data.url;
+      
+      // 添加照片到列表
+      setOrderPhotos(prev => [...prev, photoUrl]);
+    } catch (error) {
+      alert("照片上傳失敗，請重試");
+    } finally {
+      setIsUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // 刪除照片
+  const handleDeletePhoto = (index: number) => {
+    setOrderPhotos(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,28 +125,22 @@ export default function CustomerNewOrder() {
       return;
     }
 
-    // 驗證支付方式
-    if (!paymentMethod) {
-      alert("請選擇支付方式");
+    // 驗證衣物放置地點
+    if (!itemLocation) {
+      alert("請選擇衣物放置地點");
       return;
     }
 
     // 預設送件方式為「到府收送」
     const deliveryType = "pickup";
 
-    // 將支付方式映射到後端接受的值
-    let mappedPaymentMethod: "cash" | "credit_card" | "line_pay" | "points" = "cash";
-    if (paymentMethod === "line_pay") {
-      mappedPaymentMethod = "line_pay";
-    } else if (paymentMethod === "apple_pay") {
-      // Apple Pay 暫時映射到 credit_card
-      mappedPaymentMethod = "credit_card";
-    }
+    // 預設支付方式為現金
+    const paymentMethod = "cash";
 
     await createOrderMutation.mutateAsync({
       deliveryType: deliveryType as "pickup" | "delivery" | "self",
       bagCount: parseInt(bagCount),
-      paymentMethod: mappedPaymentMethod,
+      paymentMethod: paymentMethod,
       notes: notes || undefined,
     });
   };
@@ -189,6 +240,33 @@ export default function CustomerNewOrder() {
                 />
               </div>
 
+              {/* 衣物放置地點 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  衣物放置地點 <span className="text-red-500">*</span>
+                </label>
+                <div className="flex flex-col md:flex-row gap-3">
+                  {[
+                    { value: "lobby", label: "大樓大廳" },
+                    { value: "door", label: "住家門口" },
+                    { value: "other", label: "其他" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setItemLocation(option.value as any)}
+                      className={`flex-1 px-4 py-3 rounded-lg border-2 font-semibold transition ${
+                        itemLocation === option.value
+                          ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                          : "bg-white text-gray-700 border-gray-300 hover:border-blue-300 hover:bg-blue-50"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* 備註 */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -205,32 +283,46 @@ export default function CustomerNewOrder() {
             </CardContent>
           </Card>
 
-          {/* 支付方式：按鈕組 */}
+          {/* 新增相片 */}
           <Card className="bg-white border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-2xl text-gray-900">支付方式</CardTitle>
+              <CardTitle className="text-2xl text-gray-900">新增相片（協助確認實際位置）</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-col md:flex-row gap-3">
-                {[
-                  { value: "cash", label: "現金" },
-                  { value: "line_pay", label: "LINE Pay" },
-                  { value: "apple_pay", label: "Apple Pay" },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setPaymentMethod(option.value as any)}
-                    className={`flex-1 px-4 py-3 rounded-lg border-2 font-semibold transition ${
-                      paymentMethod === option.value
-                        ? "bg-blue-600 text-white border-blue-600 shadow-md"
-                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-300 hover:bg-blue-50"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+            <CardContent className="space-y-4">
+              <Button
+                type="button"
+                onClick={handleTakePhoto}
+                disabled={isUploadingPhoto}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-base font-semibold"
+              >
+                {isUploadingPhoto ? "上傳中..." : "拍照上傳"}
+              </Button>
+
+              {/* 照片列表 */}
+              {orderPhotos.length > 0 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {orderPhotos.map((photo, idx) => (
+                    <div key={idx} className="relative group">
+                      <img
+                        src={photo}
+                        alt={`照片 ${idx + 1}`}
+                        className="w-full h-24 object-cover rounded border border-gray-300 cursor-pointer hover:opacity-80"
+                        onClick={() => {
+                          setSelectedPhotoUrl(photo);
+                          setShowPhotoModal(true);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePhoto(idx)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -252,6 +344,31 @@ export default function CustomerNewOrder() {
             </Button>
           </div>
         </form>
+
+        {/* 隱藏的文件輸入 */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePhotoUpload}
+          className="hidden"
+        />
+
+        {/* 照片放大預覽 */}
+        <Dialog open={showPhotoModal} onOpenChange={setShowPhotoModal}>
+          <DialogContent className="bg-white max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>照片預覽</DialogTitle>
+            </DialogHeader>
+            {selectedPhotoUrl && (
+              <img
+                src={selectedPhotoUrl}
+                alt="預覽"
+                className="w-full h-auto rounded"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </CustomerLayout>
   );

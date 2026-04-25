@@ -49,6 +49,7 @@ model Order {
   paymentMethod       String   @db.Enum("cash", "credit_card", "line_pay", "points")
   paymentStatus       String   @default("unpaid") @db.Enum("unpaid", "paid")
   notes               String?  @db.Text
+  itemLocation        String?  @db.Enum("lobby", "door", "other") @default(null)
   orderStatus         String   @default("pending") @db.Enum("pending", "scheduled", "completed", "cancelled")
   orderNumber         String?  @db.VarChar(20)
   progress            String   @default("pending") @db.Enum("pending", "received", "washing", "returning", "completed")
