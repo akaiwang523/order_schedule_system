@@ -11,6 +11,7 @@ import CustomerOrders from "@/pages/CustomerOrders";
 import CustomerHome from "@/pages/CustomerHome";
 import CustomerNewOrder from "@/pages/CustomerNewOrder";
 import CustomerHistory from "@/pages/CustomerHistory";
+import CustomerOrderOverview from "@/pages/CustomerOrderOverview";
 import Profile from "@/pages/Profile";
 import OrderDetail from "@/pages/OrderDetail";
 
@@ -111,6 +112,12 @@ export default function App() {
           <OrderDetail />
         </ProtectedRoute>
       )}
+      
+      {location.startsWith("/customer/order/") && location.includes("/overview") && (
+        <ProtectedRoute requiredRole="user">
+          <CustomerOrderOverview />
+        </ProtectedRoute>
+      )}
 
       {/* 未定義的路由 → 根據身份導向 */}
       {location !== "/login" && 
@@ -124,6 +131,7 @@ export default function App() {
        location !== "/customer/history" &&
        location !== "/customer/profile" &&
        !location.startsWith("/order/") &&
+       !location.startsWith("/customer/order/") &&
        user && (
         <>
           {user.role === "admin" ? (

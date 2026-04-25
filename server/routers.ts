@@ -269,6 +269,36 @@ export const appRouter = router({
         return order;
       }),
 
+    getByCustomerId: protectedProcedure
+      .input(z.object({ customerId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        // 客戶只能查看自己的訂單
+        if (ctx.user.role === 'user' && input.customerId !== ctx.user.id) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: '無權存取此訂單',
+          });
+        }
+
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database connection failed',
+          });
+        }
+
+        const { orders: ordersTable } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+
+        const result = await db
+          .select()
+          .from(ordersTable)
+          .where(eq(ordersTable.customerId, input.customerId));
+
+        return result;
+      }),
+
     getByDate: protectedProcedure
       .input(z.object({ date: z.string() }))
       .query(async ({ ctx, input }) => {
