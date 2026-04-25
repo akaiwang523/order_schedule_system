@@ -1,11 +1,15 @@
+'use client';
+
 import { useState, useMemo } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 
 export default function AdminAnalytics() {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [searchMonth, setSearchMonth] = useState<string>("");
   
   // 獲取所有訂單
   const { data: allOrders = [], isLoading } = trpc.order.getAll.useQuery();
@@ -68,161 +72,174 @@ export default function AdminAnalytics() {
     return stat || null;
   }, [selectedMonth, monthlyStats]);
 
+  // 篩選搜尋結果
+  const filteredMonthlyStats = useMemo(() => {
+    if (!searchMonth.trim()) return [];
+    return monthlyStats.filter((stat) => stat.monthKey.includes(searchMonth));
+  }, [monthlyStats, searchMonth]);
+
   return (
     <AdminLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">營業概況</h1>
-          <p className="text-gray-400">查看營業統計和分析</p>
+          <h1 className="text-3xl font-bold text-white mb-1">營業概況</h1>
+          <p className="text-gray-400 text-sm">查看營業統計和分析</p>
         </div>
 
-        {/* 總體統計 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* 總體統計 - 縮小欄位 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Card className="bg-gray-900 border-gray-800">
-            <CardContent className="pt-6">
-              <p className="text-gray-400 text-sm mb-2">總營業額</p>
-              <p className="text-3xl font-bold text-white">NT${totalStats.revenue}</p>
+            <CardContent className="pt-4">
+              <p className="text-gray-400 text-xs mb-1">總營業額</p>
+              <p className="text-2xl font-bold text-white">NT${totalStats.revenue}</p>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-900 border-gray-800">
-            <CardContent className="pt-6">
-              <p className="text-gray-400 text-sm mb-2">平均月營業額</p>
-              <p className="text-3xl font-bold text-white">NT${totalStats.averageRevenue}</p>
+            <CardContent className="pt-4">
+              <p className="text-gray-400 text-xs mb-1">平均月營業額</p>
+              <p className="text-2xl font-bold text-white">NT${totalStats.averageRevenue}</p>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-900 border-gray-800">
-            <CardContent className="pt-6">
-              <p className="text-gray-400 text-sm mb-2">總訂單數</p>
-              <p className="text-3xl font-bold text-white">{totalStats.orderCount}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-900 border-gray-800">
-            <CardContent className="pt-6">
-              <p className="text-gray-400 text-sm mb-2">總袋數</p>
-              <p className="text-3xl font-bold text-white">{totalStats.bagCount}</p>
+            <CardContent className="pt-4">
+              <p className="text-gray-400 text-xs mb-1">總訂單數</p>
+              <p className="text-2xl font-bold text-white">{totalStats.orderCount}</p>
             </CardContent>
           </Card>
         </div>
 
         {/* 選定月份統計摘要 */}
         {selectedMonthStats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-blue-900/20 border border-blue-800 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-blue-900/20 border border-blue-800 rounded-lg">
             <div>
-              <p className="text-gray-400 text-sm mb-2">選定月份</p>
-              <p className="text-2xl font-bold text-blue-400">{selectedMonthStats.month}</p>
+              <p className="text-gray-400 text-xs mb-1">選定月份</p>
+              <p className="text-xl font-bold text-blue-400">{selectedMonthStats.month}</p>
             </div>
             <div>
-              <p className="text-gray-400 text-sm mb-2">月份營業額</p>
-              <p className="text-2xl font-bold text-white">NT${selectedMonthStats.revenue}</p>
+              <p className="text-gray-400 text-xs mb-1">月份營業額</p>
+              <p className="text-xl font-bold text-white">NT${selectedMonthStats.revenue}</p>
             </div>
             <div>
-              <p className="text-gray-400 text-sm mb-2">月份訂單數</p>
-              <p className="text-2xl font-bold text-white">{selectedMonthStats.orderCount}</p>
-            </div>
-            <div>
-              <p className="text-gray-400 text-sm mb-2">月份袋數</p>
-              <p className="text-2xl font-bold text-white">{selectedMonthStats.bagCount}</p>
+              <p className="text-gray-400 text-xs mb-1">月份訂單數</p>
+              <p className="text-xl font-bold text-white">{selectedMonthStats.orderCount}</p>
             </div>
           </div>
         )}
 
-        {/* 月份統計表 */}
+        {/* 月份搜尋 */}
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-white">月份統計</CardTitle>
-              <div className="flex gap-2">
-                {monthlyStats.map((stat) => (
-                  <Button
-                    key={stat.monthKey}
-                    variant={selectedMonth === stat.monthKey ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedMonth(selectedMonth === stat.monthKey ? null : stat.monthKey)}
-                    className="text-xs"
-                  >
-                    {stat.month}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            <CardTitle className="text-white text-lg">搜尋月份</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="text-gray-400">載入中...</div>
-            ) : monthlyStats.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">暫無訂單數據</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-800">
-                      <th className="text-left py-3 px-4 text-gray-400">月份</th>
-                      <th className="text-left py-3 px-4 text-gray-400">營業額</th>
-                      <th className="text-left py-3 px-4 text-gray-400">訂單數</th>
-                      <th className="text-left py-3 px-4 text-gray-400">袋數</th>
-                      <th className="text-left py-3 px-4 text-gray-400">平均訂單額</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {monthlyStats
-                      .filter((stat) => !selectedMonth || stat.monthKey === selectedMonth)
-                      .map((stat, index) => (
-                        <tr key={index} className="border-b border-gray-800 hover:bg-gray-800/50">
-                          <td className="py-3 px-4 text-white">{stat.month}</td>
-                          <td className="py-3 px-4 text-white font-semibold">NT${stat.revenue}</td>
-                          <td className="py-3 px-4 text-gray-300">{stat.orderCount}</td>
-                          <td className="py-3 px-4 text-gray-300">{stat.bagCount}</td>
-                          <td className="py-3 px-4 text-gray-300">
-                            NT${stat.orderCount > 0 ? Math.round(stat.revenue / stat.orderCount) : 0}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <Input
+              type="text"
+              placeholder="輸入月份（如 2026-04）..."
+              value={searchMonth}
+              onChange={(e) => setSearchMonth(e.target.value)}
+              className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 text-sm"
+            />
           </CardContent>
         </Card>
 
-        {/* 趨勢分析 */}
-        <Card className="bg-gray-900 border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white">營業趨勢</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {monthlyStats.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">暫無訂單數據</div>
-            ) : (
-              <div className="space-y-4">
-                {monthlyStats
-                  .filter((stat) => !selectedMonth || stat.monthKey === selectedMonth)
-                  .map((stat, index) => (
-                  <div key={index}>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-gray-300">{stat.month}</span>
-                      <span className="text-white font-semibold">NT${stat.revenue}</span>
-                    </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2">
-                      <div
-                        className="bg-green-600 h-2 rounded-full"
-                        style={{
-                          width: `${
-                            monthlyStats.length > 0
-                              ? (stat.revenue / Math.max(...monthlyStats.map((s) => s.revenue))) * 100
-                              : 0
-                          }%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
+        {/* 月份統計表 - 只在搜尋時顯示 */}
+        {filteredMonthlyStats.length > 0 && (
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-white text-lg">月份統計</CardTitle>
+                <div className="flex gap-1 flex-wrap">
+                  {monthlyStats.map((stat) => (
+                    <Button
+                      key={stat.monthKey}
+                      variant={selectedMonth === stat.monthKey ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedMonth(selectedMonth === stat.monthKey ? null : stat.monthKey)}
+                      className="text-xs px-2 py-1 h-auto"
+                    >
+                      {stat.month}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-gray-400 text-sm">載入中...</div>
+              ) : filteredMonthlyStats.length === 0 ? (
+                <div className="text-center text-gray-500 py-6 text-sm">暫無訂單數據</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-800">
+                        <th className="text-left py-2 px-3 text-gray-400">月份</th>
+                        <th className="text-left py-2 px-3 text-gray-400">營業額</th>
+                        <th className="text-left py-2 px-3 text-gray-400">訂單數</th>
+                        <th className="text-left py-2 px-3 text-gray-400">平均訂單額</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredMonthlyStats
+                        .filter((stat) => !selectedMonth || stat.monthKey === selectedMonth)
+                        .map((stat, index) => (
+                          <tr key={index} className="border-b border-gray-800 hover:bg-gray-800/50">
+                            <td className="py-2 px-3 text-white">{stat.month}</td>
+                            <td className="py-2 px-3 text-white font-semibold">NT${stat.revenue}</td>
+                            <td className="py-2 px-3 text-gray-300">{stat.orderCount}</td>
+                            <td className="py-2 px-3 text-gray-300">
+                              NT${stat.orderCount > 0 ? Math.round(stat.revenue / stat.orderCount) : 0}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 趨勢分析 */}
+        {filteredMonthlyStats.length > 0 && (
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-white text-lg">營業趨勢</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {filteredMonthlyStats.length === 0 ? (
+                <div className="text-center text-gray-500 py-6 text-sm">暫無訂單數據</div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredMonthlyStats
+                    .filter((stat) => !selectedMonth || stat.monthKey === selectedMonth)
+                    .map((stat, index) => (
+                    <div key={index}>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-300 text-xs">{stat.month}</span>
+                        <span className="text-white font-semibold text-xs">NT${stat.revenue}</span>
+                      </div>
+                      <div className="w-full bg-gray-800 rounded-full h-2">
+                        <div
+                          className="bg-green-600 h-2 rounded-full"
+                          style={{
+                            width: `${
+                              filteredMonthlyStats.length > 0
+                                ? (stat.revenue / Math.max(...filteredMonthlyStats.map((s) => s.revenue))) * 100
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AdminLayout>
   );

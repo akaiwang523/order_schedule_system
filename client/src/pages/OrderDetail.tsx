@@ -1,4 +1,5 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+'use client';
+
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 interface OrderItem {
   id: number;
@@ -35,7 +37,6 @@ interface Order {
 
 export default function OrderDetail() {
   const [location] = useLocation();
-  // 從 URL 中手動提取 orderNumber（格式：/order/260422-01）
   const orderNumber = location.startsWith('/order/') ? location.substring(7) : '';
   const [, setLocation] = useLocation();
   const { user, isLoading: userLoading } = useAuth();
@@ -48,10 +49,12 @@ export default function OrderDetail() {
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editingNotes, setEditingNotes] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [photoItemId, setPhotoItemId] = useState<number | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [itemPhotos, setItemPhotos] = useState<{ [key: number]: string[] }>({});
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 監聽用戶變化，同步數據
@@ -115,6 +118,16 @@ export default function OrderDetail() {
   useEffect(() => {
     if (orderItems) {
       setItems(orderItems);
+      // 初始化照片列表
+      const photosMap: { [key: number]: string[] } = {};
+      orderItems.forEach(item => {
+        if (item.photoUrl) {
+          photosMap[item.id] = [item.photoUrl];
+        } else {
+          photosMap[item.id] = [];
+        }
+      });
+      setItemPhotos(photosMap);
     }
   }, [orderItems]);
 
@@ -142,30 +155,6 @@ export default function OrderDetail() {
     }
   };
 
-  // 完成訂單
-  const updateProgressMutation = trpc.order.updateProgress.useMutation();
-
-  const handleCompleteOrder = () => {
-    if (!order) return;
-    
-    const confirmed = window.confirm(`確認該訂單（${order.orderNumber}）已完成？`);
-    if (confirmed) {
-      updateProgressMutation.mutate(
-        { orderId: order.id, progress: 'completed' },
-        {
-          onSuccess: () => {
-            console.log('Order completed:', order.orderNumber);
-            setLocation("/customer/home");
-          },
-          onError: (error) => {
-            console.error('Failed to complete order:', error);
-            alert('完成訂單失敗，請重試');
-          },
-        }
-      );
-    }
-  };
-
   // 拍照功能
   const handleTakePhoto = (itemId: number) => {
     setPhotoItemId(itemId);
@@ -180,7 +169,7 @@ export default function OrderDetail() {
     try {
       setIsUploadingPhoto(true);
       
-      // 上傳照片到 S3（需要後端實現 /api/upload-photo）
+      // 上傳照片到 S3
       const formData = new FormData();
       formData.append('file', file);
       
@@ -194,55 +183,67 @@ export default function OrderDetail() {
       const data = await response.json();
       const photoUrl = data.url;
       
-      // 更新衣物的 photoUrl
-      updateItemMutation.mutate({
-        itemId: photoItemId,
-        photoUrl: photoUrl,
-      });
+      // 添加照片到列表
+      setItemPhotos(prev => ({
+        ...prev,
+        [photoItemId]: [...(prev[photoItemId] || []), photoUrl]
+      }));
       
-      setPhotoItemId(null);
+      // 更新衣物的 photoUrl（保存第一張照片）
+      if (!itemPhotos[photoItemId] || itemPhotos[photoItemId].length === 0) {
+        updateItemMutation.mutate({
+          itemId: photoItemId,
+          photoUrl: photoUrl,
+        });
+      }
     } catch (error) {
-      console.error('Photo upload error:', error);
-      alert('照片上傳失敗，請重試');
+      setErrorMessage("照片上傳失敗，請重試");
     } finally {
       setIsUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
-  // 如果還在加載，顯示載入狀態
-  if (isLoading || orderLoading) {
+  // 刪除照片
+  const handleDeletePhoto = (itemId: number, photoIndex: number) => {
+    setItemPhotos(prev => {
+      const photos = prev[itemId] || [];
+      const newPhotos = photos.filter((_, idx) => idx !== photoIndex);
+      return {
+        ...prev,
+        [itemId]: newPhotos
+      };
+    });
+  };
+
+  // 顯示照片放大預覽
+  const handleShowPhoto = (photoUrl: string) => {
+    setSelectedPhotoUrl(photoUrl);
+    setShowPhotoModal(true);
+  };
+
+  if (isLoading || userLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-lg mb-4">載入中...</p>
-          <p className="text-sm text-gray-500">請稍候，正在查詢訂單資訊</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 p-4 md:p-8 flex items-center justify-center">
+        <p className="text-gray-600">加載中...</p>
       </div>
     );
   }
 
-  // 如果查不到訂單，顯示錯誤提示
   if (!order) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-lg mb-2">找不到訂單</p>
-          <p className="text-sm text-gray-500 mb-6">訂單編號：{orderNumber}</p>
-          {orderError && (
-            <p className="text-sm text-red-500 mb-6">
-              錯誤：{(orderError as any)?.message || '查詢失敗，請重新整理'}
-            </p>
-          )}
-          <Button onClick={() => setLocation("/")} variant="outline">
-            返回首頁
-          </Button>
-          <Button 
-            onClick={() => window.location.reload()} 
-            variant="outline" 
-            className="ml-2"
+      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <Button
+            variant="ghost"
+            onClick={() => setLocation("/customer/home")}
+            className="mb-6"
           >
-            重新整理
+            ← 返回
           </Button>
+          <p className="text-gray-600">訂單不存在或已被刪除</p>
         </div>
       </div>
     );
@@ -254,7 +255,7 @@ export default function OrderDetail() {
         {/* 返回按鈕 */}
         <Button
           variant="ghost"
-          onClick={() => setLocation("/")}
+          onClick={() => setLocation("/customer/home")}
           className="mb-6"
         >
           ← 返回
@@ -263,15 +264,15 @@ export default function OrderDetail() {
         {/* 訂單標題 */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            您的訂單編號為：{order.orderNumber}
+            訂單編號：{order.orderNumber}
           </h1>
-          <p className="text-gray-600">管理您的衣物編號和備註</p>
+          <p className="text-gray-600">管理您的衣物編號和照片</p>
         </div>
 
         {/* 衣物編號輸入區 */}
         <Card className="bg-white border-gray-200 shadow-sm mb-8">
           <CardHeader>
-            <CardTitle className="text-2xl text-gray-900">衣物編號(件數)</CardTitle>
+            <CardTitle className="text-2xl text-gray-900">衣物件數</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex gap-3">
@@ -306,65 +307,83 @@ export default function OrderDetail() {
               <CardTitle className="text-2xl text-gray-900">衣物清單</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                    className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
                   >
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{item.itemNumber}</p>
-                      <p className="text-sm text-gray-600">
-                        {item.notes || "無備註"}
-                      </p>
-                      {item.photoUrl && (
-                        <img src={item.photoUrl} alt="衣物照片" className="mt-2 h-12 w-12 rounded object-cover" />
-                      )}
+                    {/* 衣物編號 */}
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="font-bold text-lg text-gray-900">{item.itemNumber}</p>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleTakePhoto(item.id)}
+                          disabled={isUploadingPhoto && photoItemId === item.id}
+                        >
+                          {isUploadingPhoto && photoItemId === item.id ? "上傳中..." : "拍照"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingItemId(item.id);
+                            setEditingNotes(item.notes || "");
+                            setShowItemDialog(true);
+                          }}
+                        >
+                          備註
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteItemMutation.mutate({ itemId: item.id })}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleTakePhoto(item.id)}
-                        disabled={isUploadingPhoto}
-                      >
-                        {isUploadingPhoto && photoItemId === item.id ? "上傳中..." : "拍照"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingItemId(item.id);
-                          setEditingNotes(item.notes || "");
-                          setShowItemDialog(true);
-                        }}
-                      >
-                        備註
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => deleteItemMutation.mutate({ itemId: item.id })}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
+
+                    {/* 備註 */}
+                    {item.notes && (
+                      <p className="text-sm text-gray-600 mb-3">備註：{item.notes}</p>
+                    )}
+
+                    {/* 照片列表 */}
+                    {itemPhotos[item.id] && itemPhotos[item.id].length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-sm font-semibold text-gray-700 mb-2">照片（{itemPhotos[item.id].length}張）</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                          {itemPhotos[item.id].map((photoUrl, photoIndex) => (
+                            <div key={photoIndex} className="relative group">
+                              <img
+                                src={photoUrl}
+                                alt={`照片 ${photoIndex + 1}`}
+                                className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => handleShowPhoto(photoUrl)}
+                              />
+                              <button
+                                onClick={() => handleDeletePhoto(item.id, photoIndex)}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              <span className="absolute bottom-1 left-1 bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                                {String(photoIndex + 1).padStart(2, '0')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
         )}
-
-        {/* 完成訂單按鈕 */}
-        <div className="flex gap-3 mt-8">
-          <Button
-            onClick={handleCompleteOrder}
-            className="bg-green-600 text-white hover:bg-green-700 px-8"
-          >
-            完成訂單
-          </Button>
-        </div>
 
         {/* 備註編輯對話框 */}
         <Dialog open={showItemDialog} onOpenChange={setShowItemDialog}>
@@ -398,6 +417,22 @@ export default function OrderDetail() {
                 保存
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 照片放大預覽對話框 */}
+        <Dialog open={showPhotoModal} onOpenChange={setShowPhotoModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>照片預覽</DialogTitle>
+            </DialogHeader>
+            {selectedPhotoUrl && (
+              <img
+                src={selectedPhotoUrl}
+                alt="照片預覽"
+                className="w-full h-auto rounded-lg"
+              />
+            )}
           </DialogContent>
         </Dialog>
 
