@@ -117,10 +117,17 @@ export default function OrderDetail() {
   // 監聽訂單項目
   useEffect(() => {
     if (orderItems) {
-      setItems(orderItems);
+      // 按 itemNumber 排序（例如：260424-02-01, 260424-02-02...）
+      const sortedItems = [...orderItems].sort((a, b) => {
+        // 提取最後的序號部分進行數值比較
+        const aNum = parseInt(a.itemNumber.split('-').pop() || '0');
+        const bNum = parseInt(b.itemNumber.split('-').pop() || '0');
+        return aNum - bNum;
+      });
+      setItems(sortedItems);
       // 初始化照片列表
       const photosMap: { [key: number]: string[] } = {};
-      orderItems.forEach(item => {
+      sortedItems.forEach(item => {
         if (item.photoUrl) {
           photosMap[item.id] = [item.photoUrl];
         } else {
