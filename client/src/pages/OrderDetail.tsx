@@ -123,7 +123,12 @@ export default function OrderDetail() {
   // 添加照片的 mutation
   const addPhotoMutation = trpc.orderItem.addPhoto.useMutation({
     onSuccess: () => {
+      console.log('[DEBUG] addPhotoMutation success, refetching items');
       refetchOrderItems();
+    },
+    onError: (error) => {
+      console.error('[ERROR] addPhotoMutation error:', error.message);
+      setErrorMessage(`保存照片失敗: ${error.message}`);
     },
   });
 
@@ -168,28 +173,38 @@ export default function OrderDetail() {
     const file = event.target.files?.[0];
     if (!file || !photoItemId) return;
 
+    console.log('[DEBUG] 開始上傳照片:', { itemId: photoItemId, fileName: file.name, fileSize: file.size });
     setIsUploadingPhoto(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/upload', {
+      const response = await fetch('/api/upload-photo', {
         method: 'POST',
         body: formData,
       });
 
-      if (!response.ok) throw new Error('上傳失敗');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`上傳失敗: ${errorData.error || response.statusText}`);
+      }
 
-      const { url } = await response.json();
+      const data = await response.json();
+      console.log('[DEBUG] 上傳成功:', { url: data.url });
+      
+      console.log('[DEBUG] 開始保存照片到資料庫, itemId:', photoItemId);
       await addPhotoMutation.mutateAsync({
         itemId: photoItemId,
-        photoUrl: url,
+        photoUrl: data.url,
       });
 
+      console.log('[DEBUG] 照片已保存到資料庫');
       setPhotoItemId(null);
+      setErrorMessage('');
     } catch (error) {
-      console.error('上傳照片失敗:', error);
-      setErrorMessage('上傳照片失敗');
+      const errorMsg = error instanceof Error ? error.message : '未知錯誤';
+      console.error('[ERROR] 上傳照片失敗:', errorMsg);
+      setErrorMessage(`上傳照片失敗: ${errorMsg}`);
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -306,27 +321,18 @@ export default function OrderDetail() {
                   </div>
 
                   {/* 照片列表 */}
-                  {itemPhotos[item.id] && itemPhotos[item.id].length > 0 && (
-                    <div className="mt-4 grid grid-cols-3 gap-2">
-                      {itemPhotos[item.id].map((photo) => (
-                        <div key={photo.id} className="relative">
-                          <img
-                            src={photo.photoUrl}
-                            alt={`照片 ${photo.id}`}
-                            className="w-full h-24 object-cover rounded cursor-pointer"
-                            onClick={() => {
-                              setSelectedPhotoUrl(photo.photoUrl);
-                              setShowPhotoModal(true);
-                            }}
-                          />
-                          <button
-                            onClick={() => deletePhotoMutation.mutate({ photoId: photo.id })}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))}
+                  {item.photoUrl && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium mb-2">主照片：</p>
+                      <img
+                        src={item.photoUrl}
+                        alt={`照片 ${item.id}`}
+                        className="w-full h-48 object-cover rounded cursor-pointer"
+                        onClick={() => {
+                          setSelectedPhotoUrl(item.photoUrl!);
+                          setShowPhotoModal(true);
+                        }}
+                      />
                     </div>
                   )}
                 </div>
@@ -335,6 +341,13 @@ export default function OrderDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* 錯誤信息顯示 */}
+      {errorMessage && (
+        <div className="mb-4 p-3 bg-red-100 text-red-800 rounded">
+          {errorMessage}
+        </div>
+      )}
 
       {/* 生成衣物編號對話框 */}
       <Dialog open={showItemDialog} onOpenChange={setShowItemDialog}>

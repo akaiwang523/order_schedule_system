@@ -524,11 +524,27 @@ export const appRouter = router({
           });
         }
         
-        await db.execute(
-          `INSERT INTO orderItemPhotos (itemId, photoUrl) VALUES (?, ?)`
-          , [input.itemId, input.photoUrl]
-        );
-        return { success: true };
+        console.log('[DEBUG] addPhoto called with:', { itemId: input.itemId, photoUrl: input.photoUrl });
+        
+        try {
+          const { orderItems } = await import("../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          
+          // 更新 orderItems 表中的 photoUrl
+          await db
+            .update(orderItems)
+            .set({ photoUrl: input.photoUrl })
+            .where(eq(orderItems.id, input.itemId));
+          
+          console.log('[DEBUG] Photo saved successfully');
+          return { success: true };
+        } catch (error: any) {
+          console.error('[ERROR] addPhoto failed:', error.message);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: `Failed to save photo: ${error.message}`,
+          });
+        }
       }),
 
     getPhotos: protectedProcedure
