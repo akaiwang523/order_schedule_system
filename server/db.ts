@@ -307,7 +307,7 @@ export async function completeOrder(orderId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const now = new Date();
-  await db.update(orders).set({ orderStatus: 'completed', completedAt: now }).where(eq(orders.id, orderId));
+  await db.update(orders).set({ orderStatus: 'completed', progress: 'completed', completedAt: now }).where(eq(orders.id, orderId));
 }
 
 export async function getScheduleByOrderId(orderId: number) {
