@@ -32,6 +32,10 @@ async function startServer() {
   const { initializePhotoUrlColumn } = await import('../migrations/init-photourl');
   await initializePhotoUrlColumn();
   
+  // 執行 OrderItemPhoto 表初始化
+  const { initializeOrderItemPhotosTable } = await import('../migrations/init-order-item-photos');
+  await initializeOrderItemPhotosTable();
+  
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads

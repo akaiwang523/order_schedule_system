@@ -88,7 +88,20 @@ model OrderItem {
   updatedAt DateTime @updatedAt @db.Timestamp(0)
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  photos OrderItemPhoto[]
 
   @@index([orderId])
   @@map("orderItems")
+}
+
+model OrderItemPhoto {
+  id        Int      @id @default(autoincrement())
+  itemId    Int
+  photoUrl  String   @db.Text
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+
+  item OrderItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@map("orderItemPhotos")
 }

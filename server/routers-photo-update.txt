@@ -1,0 +1,58 @@
+在 routers.ts 的 orderItem 路由中添加以下代碼（在第 506 行的 deleteByOrderId 之後）：
+
+    addPhoto: protectedProcedure
+      .input(z.object({
+        itemId: z.number(),
+        photoUrl: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database connection failed',
+          });
+        }
+        
+        const result = await db.query(
+          `INSERT INTO orderItemPhotos (itemId, photoUrl) VALUES (?, ?)`
+          , [input.itemId, input.photoUrl]
+        );
+        return { success: true };
+      }),
+
+    getPhotos: protectedProcedure
+      .input(z.object({ itemId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database connection failed',
+          });
+        }
+        
+        const result = await db.query(
+          `SELECT id, photoUrl, createdAt FROM orderItemPhotos WHERE itemId = ? ORDER BY createdAt ASC`
+          , [input.itemId]
+        );
+        return result || [];
+      }),
+
+    deletePhoto: protectedProcedure
+      .input(z.object({ photoId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database connection failed',
+          });
+        }
+        
+        await db.query(
+          `DELETE FROM orderItemPhotos WHERE id = ?`
+          , [input.photoId]
+        );
+        return { success: true };
+      }),
