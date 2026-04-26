@@ -109,36 +109,34 @@ export default function CustomerHome() {
   return (
     <CustomerLayout>
       <div className="space-y-6">
-        {/* 歡迎語 + 已完成訂單 */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              歡迎，{user?.name || "使用者"}
-            </h1>
-            <p className="text-gray-600 text-lg">查看您的訂單狀態和進度</p>
-          </div>
-          
-          {/* 已完成訂單 - 右側顯示 */}
-          {recentCompletedOrders.length > 0 && (
-            <div className="bg-green-50 border border-green-300 rounded-lg p-3 ml-4">
-              <p className="text-xs font-semibold text-green-700 mb-2">已完成訂單</p>
-              <div className="flex flex-wrap gap-1">
-                {recentCompletedOrders.map((order: any) => {
-                  const orderNumber = getOrderNumber(order);
-                  return (
-                    <button
-                      key={order.id}
-                      onClick={() => setLocation(`/customer/order/${order.id}/overview`)}
-                      className="px-2 py-1 bg-white border border-green-300 rounded text-green-700 font-medium text-xs hover:bg-green-100 transition-colors"
-                    >
-                      {orderNumber}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        {/* 歡迎語 */}
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            歡迎，{user?.name || "使用者"}
+          </h1>
+          <p className="text-gray-600 text-lg">查看您的訂單狀態和進度</p>
         </div>
+
+        {/* 已完成訂單 - 下方顯示 */}
+        {recentCompletedOrders.length > 0 && (
+          <div className="bg-green-50 border border-green-300 rounded-lg p-4">
+            <p className="text-sm font-semibold text-green-700 mb-3">已完成訂單</p>
+            <div className="flex flex-wrap gap-2">
+              {recentCompletedOrders.map((order: any) => {
+                const orderNumber = getOrderNumber(order);
+                return (
+                  <button
+                    key={order.id}
+                    onClick={() => setLocation(`/customer/order/${order.id}/overview`)}
+                    className="px-3 py-2 bg-white border border-green-300 rounded-lg text-green-700 font-medium text-sm hover:bg-green-100 transition-colors"
+                  >
+                    {orderNumber}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 當前訂單列表 */}
         <Card className="bg-white border-gray-200 shadow-sm">
