@@ -57,7 +57,7 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
       </div>
 
       {/* Main Content - Always 100% width, no margin/padding adjustments */}
-      <main className="flex-1 w-full pt-16 overflow-auto" style={{ minWidth: '1024px' }}>
+      <main className="flex-1 w-full pt-16 overflow-auto">
         <div className="p-8">
           {children}
         </div>
