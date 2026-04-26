@@ -117,8 +117,22 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    font-size: 14px; /* 基礎字體大小，適應 1024px 寬度 */
+  }
   body {
     @apply bg-background text-foreground;
+    overflow-x: auto;
+  }
+  
+  @media (min-width: 1200px) {
+    html {
+      font-size: 16px; /* 桌面版恢復正常大小 */
+    }
+  }
+  #root {
+    min-width: 1024px;
+    overflow-x: auto;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
