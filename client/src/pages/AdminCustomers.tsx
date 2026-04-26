@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { trpc } from "@/lib/trpc";
 export default function AdminCustomers() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [, setLocation] = useLocation();
 
   // 搜尋時清除選中的客戶
   const handleSearchChange = (query: string) => {
@@ -50,6 +53,15 @@ export default function AdminCustomers() {
       }, 0),
     };
   }, [customerOrderHistory]);
+
+  // 篩選訂單
+  const filteredOrderHistory = useMemo(() => {
+    if (!customerOrderHistory) return [];
+    return customerOrderHistory.filter((order: any) => {
+      if (filterStatus === "all") return true;
+      return order.orderStatus === filterStatus;
+    });
+  }, [customerOrderHistory, filterStatus]);
 
   const getCategoryLabel = (deliveryType: string) => {
     const labels: Record<string, string> = {
@@ -148,54 +160,112 @@ export default function AdminCustomers() {
                 {/* 歷史訂單 */}
                 <Card className="bg-gray-900 border-gray-800">
                   <CardHeader>
-                    <CardTitle className="text-white">歷史訂單</CardTitle>
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-white">歷史訂單</CardTitle>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setFilterStatus("all")}
+                          className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+                            filterStatus === "all"
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                          }`}
+                        >
+                          全部
+                        </button>
+                        <button
+                          onClick={() => setFilterStatus("completed")}
+                          className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+                            filterStatus === "completed"
+                              ? "bg-green-600 text-white"
+                              : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                          }`}
+                        >
+                          已完成
+                        </button>
+                        <button
+                          onClick={() => setFilterStatus("pending")}
+                          className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+                            filterStatus === "pending"
+                              ? "bg-yellow-600 text-white"
+                              : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                          }`}
+                        >
+                          待處理
+                        </button>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    {customerOrderHistory.length === 0 ? (
+                    {filteredOrderHistory.length === 0 ? (
                       <div className="text-center text-gray-500 py-8">
-                        該客戶暫無訂單
+                        {customerOrderHistory.length === 0 ? "該客戶暂無訂單" : "沒有符合篩選條件的訂單"}
                       </div>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-gray-800">
-                              <th className="text-left py-3 px-4 text-gray-400">日期</th>
-                              <th className="text-left py-3 px-4 text-gray-400">送件方式</th>
-                              <th className="text-left py-3 px-4 text-gray-400">袋數</th>
-                              <th className="text-left py-3 px-4 text-gray-400">金額</th>
-                              <th className="text-left py-3 px-4 text-gray-400">狀態</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {customerOrderHistory.map((order: any) => (
-                              <tr
-                                key={order.id}
-                                className="border-b border-gray-800 hover:bg-gray-800/50"
-                              >
-                                <td className="py-3 px-4 text-white">
-                                  {order.createdAt?.split(' ')[0] || order.createdAt?.split('T')[0] || '未知'}
-                                </td>
-                                <td className="py-3 px-4 text-gray-300">
-                                  {getCategoryLabel(order.deliveryType)}
-                                </td>
-                                <td className="py-3 px-4 text-gray-300">{order.bagCount}</td>
-                                <td className="py-3 px-4 text-gray-300">NT${order.bagCount * 150}</td>
-                                <td className="py-3 px-4">
-                                  <span
-                                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                      order.status === "completed"
-                                        ? "bg-green-900 text-green-200"
-                                        : "bg-yellow-900 text-yellow-200"
-                                    }`}
-                                  >
-                                    {order.status === "completed" ? "已完成" : "待處理"}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="space-y-4">
+                        {filteredOrderHistory.map((order: any) => (
+                          <div
+                            key={order.id}
+                            className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors cursor-pointer"
+                            onClick={() => setLocation(`/order/${order.orderNumber}`)}
+                          >
+                            {/* 訂單基本信息 */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                              <div>
+                                <p className="text-gray-400 text-xs">訂單編號</p>
+                                <p className="text-white font-semibold">{order.orderNumber || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-400 text-xs">下單日期</p>
+                                <p className="text-white">{order.createdAt?.split('T')[0] || '未知'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-400 text-xs">送件方式</p>
+                                <p className="text-white">{getCategoryLabel(order.deliveryType)}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-400 text-xs">狀態</p>
+                                <span
+                                  className={`px-2 py-1 rounded text-xs font-semibold inline-block ${
+                                    order.orderStatus === "completed"
+                                      ? "bg-green-900 text-green-200"
+                                      : "bg-yellow-900 text-yellow-200"
+                                  }`}
+                                >
+                                  {order.orderStatus === "completed" ? "已完成" : "待處理"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* 訂單詳細資料 */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-700">
+                              <div>
+                                <p className="text-gray-400 text-xs">袋數</p>
+                                <p className="text-white font-semibold">{order.bagCount}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-400 text-xs">付費方式</p>
+                                <p className="text-white">{order.paymentMethod || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-400 text-xs">付費狀態</p>
+                                <p className="text-white">{order.paymentStatus || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-400 text-xs">金額</p>
+                                <p className="text-white font-semibold">NT${order.bagCount * 150}</p>
+                              </div>
+                            </div>
+
+                            {/* 訂單備註 */}
+                            {order.notes && (
+                              <div className="mt-4 pt-4 border-t border-gray-700">
+                                <p className="text-gray-400 text-xs">備註</p>
+                                <p className="text-gray-300 text-sm">{order.notes}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </CardContent>
