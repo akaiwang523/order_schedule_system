@@ -343,9 +343,10 @@ export const appRouter = router({
           o.photoUrl,
           u.name as customerName,
           u.email as customerEmail,
-          u.phone as customerPhone
+          c.phone as customerPhone
         FROM orders o
         LEFT JOIN users u ON o.customerId = u.id
+        LEFT JOIN customers c ON u.id = c.userId
         WHERE o.orderStatus = 'pending'
         ORDER BY o.createdAt DESC
       `);
