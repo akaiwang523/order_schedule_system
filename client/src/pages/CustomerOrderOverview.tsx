@@ -87,49 +87,6 @@ export default function CustomerOrderOverview() {
         </Button>
       </div>
 
-      {/* 訂單基本信息 */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>訂單信息</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">訂單編號</p>
-              <p className="font-semibold">{order.orderNumber}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">袋數</p>
-              <p className="font-semibold">{order.bagCount}</p>
-            </div>
-            {order.itemLocation && (
-              <div>
-                <p className="text-sm text-gray-600">衣物放置地點</p>
-                <p className="font-semibold">
-                  {order.itemLocation === 'lobby' && '樂住市集'}
-                  {order.itemLocation === 'door' && '家門口'}
-                  {order.itemLocation === 'other' && '其他'}
-                </p>
-              </div>
-            )}
-            {order.photoUrl && (
-              <div>
-                <p className="text-sm text-gray-600">訂單照片</p>
-                <img
-                  src={order.photoUrl}
-                  alt="Order photo"
-                  className="w-20 h-20 object-cover rounded border cursor-pointer hover:opacity-80"
-                  onClick={() => {
-                    setSelectedPhotoUrl(order.photoUrl);
-                    setShowPhotoModal(true);
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* 衣物列表 */}
       <Card>
         <CardHeader>

@@ -41,6 +41,13 @@ export default function CustomerHome() {
     });
   }, [myOrders]);
 
+  // 篩選出已完成的訂單
+  const completedOrders = useMemo(() => {
+    return myOrders.filter((order: any) => {
+      return order.progress === "completed";
+    });
+  }, [myOrders]);
+
   // 計算分頁數據
   const totalPages = Math.ceil(pendingOrders.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -89,7 +96,7 @@ export default function CustomerHome() {
 
   return (
     <CustomerLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* 歡迎語 */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -166,21 +173,14 @@ export default function CustomerHome() {
                         </div>
                       )}
 
-                      {/* 衣物概況和衣物編輯號碼按鈕 */}
+                      {/* 衣物概況按鈕 */}
                       {shouldShowClothingOverview(progress) && (
-                        <div className="mt-4 flex gap-2">
+                        <div className="mt-4">
                           <Button
                             onClick={() => setLocation(`/customer/order/${order.id}/overview`)}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white"
                           >
                             衣物概況
-                          </Button>
-                          <Button
-                            onClick={() => setLocation(`/customer/order/${order.id}/items`)}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                            title="查看衣物編輯號碼及照片"
-                          >
-                            衣物詳情
                           </Button>
                         </div>
                       )}
@@ -198,6 +198,31 @@ export default function CustomerHome() {
             )}
           </CardContent>
         </Card>
+
+        {/* 已完成訂單 */}
+        {completedOrders.length > 0 && (
+          <Card className="bg-white border-gray-200 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg text-gray-900">已完成訂單</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {completedOrders.map((order: any) => {
+                  const orderNumber = getOrderNumber(order);
+                  return (
+                    <button
+                      key={order.id}
+                      onClick={() => setLocation(`/customer/order/${order.id}/overview`)}
+                      className="px-4 py-2 bg-green-50 border border-green-300 rounded-lg hover:bg-green-100 transition-colors text-green-700 font-medium text-sm"
+                    >
+                      {orderNumber}
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </CustomerLayout>
   );

@@ -199,9 +199,8 @@ export default function AdminDashboard() {
                       <th className="py-2 px-4 text-left text-gray-400">客戶姓名</th>
                       <th className="py-2 px-4 text-left text-gray-400">聯絡電話</th>
                       <th className="py-2 px-4 text-left text-gray-400">袋數</th>
-                      <th className="py-2 px-4 text-left text-gray-400">進度</th>
                       <th className="py-2 px-4 text-left text-gray-400">備註</th>
-                      <th className="py-2 px-4 text-left text-gray-400">操作</th>
+                      <th className="py-2 px-4 text-left text-gray-400">進度</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -300,12 +299,6 @@ export default function AdminDashboard() {
             <DialogTitle className="text-white">訂單詳情 - {selectedOrder?.orderNumber}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {/* 衣物放置地點 */}
-            <div className="bg-gray-800 p-3 rounded">
-              <p className="text-gray-400 text-sm">衣物放置地點</p>
-              <p className="text-white font-semibold">{selectedOrder?.itemLocation || "未指定"}</p>
-            </div>
-            
             {/* 訂單照片 */}
             {selectedOrder?.orderPhotos && selectedOrder.orderPhotos.length > 0 && (
               <div className="bg-gray-800 p-3 rounded">
