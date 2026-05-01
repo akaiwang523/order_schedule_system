@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user, isLoading: loading } = useAuth();
   const [, setLocation] = useLocation();
 
   if (loading) {
