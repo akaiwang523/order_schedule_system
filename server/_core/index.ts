@@ -29,16 +29,16 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   // 執行初始化遷移
-  const { initializePhotoUrlColumn } = await import('../migrations/init-photourl');
-  await initializePhotoUrlColumn();
+  try { const { initializePhotoUrlColumn } = await import('../migrations/init-photourl');
+  await initializePhotoUrlColumn(); } catch(e) { console.log("[Migration] photoUrl already exists"); }
   
   // 執行 OrderItemPhoto 表初始化
-  const { initializeOrderItemPhotosTable } = await import('../migrations/init-order-item-photos');
-  await initializeOrderItemPhotosTable();
+  try { const { initializeOrderItemPhotosTable } = await import('../migrations/init-order-item-photos');
+  await initializeOrderItemPhotosTable(); } catch(e) { console.log("[Migration] orderItemPhotos already exists"); }
   
   // 執行 itemLocation 欄位初始化
-  const { initializeItemLocationColumn } = await import('../migrations/init-item-location');
-  await initializeItemLocationColumn();
+  try { const { initializeItemLocationColumn } = await import('../migrations/init-item-location');
+  await initializeItemLocationColumn(); } catch(e) { console.log("[Migration] itemLocation already exists"); }
   
   const app = express();
   const server = createServer(app);
