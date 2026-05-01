@@ -8,9 +8,9 @@ export const users = mysqlTable("users", {
 	email: varchar({ length: 320 }),
 	loginMethod: varchar({ length: 64 }),
 	role: mysqlEnum(['user','admin','staff']).default('user').notNull(),
-	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-	lastSignedIn: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	lastSignedIn: timestamp({ mode: 'string' }).defaultNow().notNull(),
 	password: varchar({ length: 255 }),
 },
 (table) => [
@@ -23,7 +23,7 @@ export const customers = mysqlTable("customers", {
 	fullName: varchar({ length: 255 }).notNull(),
 	address: text().notNull(),
 	phone: varchar({ length: 20 }).notNull(),
-	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 },
 (table) => [
@@ -49,7 +49,7 @@ export const orders = mysqlTable("orders", {
 	completedAt: timestamp({ mode: 'string' }),
 	itemLocation: text(),
 	photoUrl: text(),
-	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 },
 (table) => [
@@ -65,7 +65,7 @@ export const schedules = mysqlTable("schedules", {
 	scheduledDate: timestamp({ mode: 'string' }).notNull(),
 	deliveryTime: varchar({ length: 10 }),
 	isCompleted: tinyint().default(false).notNull(),
-	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 },
 (table) => [
