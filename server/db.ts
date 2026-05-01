@@ -250,10 +250,11 @@ export async function getOrderById(orderId: number) {
 }
 
 // Schedule queries
-export async function createSchedule(data: InsertSchedule) {
+export async function createSchedule(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(schedules).values(data);
+  const scheduledDate = data.scheduledDate instanceof Date ? data.scheduledDate.toISOString().slice(0, 19).replace("T", " ") : data.scheduledDate;
+  const result = await db.insert(schedules).values({ ...data, isCompleted: data.isCompleted ? 1 : 0, scheduledDate });
   return result;
 }
 
